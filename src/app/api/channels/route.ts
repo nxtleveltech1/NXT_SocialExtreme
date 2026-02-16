@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/db';
 import { channels } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { encryptSecret } from '@/lib/crypto';
 
@@ -9,14 +9,12 @@ import { encryptSecret } from '@/lib/crypto';
 const ChannelSchema = z.object({
   name: z.string().min(1),
   platform: z.enum(['facebook', 'instagram', 'tiktok', 'whatsapp']),
-  provider: z.string().default('meta'),
   handle: z.string().min(1),
-  webhookUrl: z.string().optional(),
-  syncEnabled: z.boolean().default(true),
-  pushEnabled: z.boolean().default(true),
   authType: z.enum(['oauth', 'username_password']).default('oauth'),
   username: z.string().optional(),
   password: z.string().optional(),
+  platformId: z.string().optional(),
+  settings: z.record(z.unknown()).optional(),
 });
 
 const MessageQueueSchema = z.object({
@@ -46,14 +44,12 @@ export async function POST(request: NextRequest) {
     const newChannel = await db.insert(channels).values({
       name: validatedData.name,
       platform: validatedData.platform,
-      provider: validatedData.provider,
       handle: validatedData.handle,
-      webhookUrl: validatedData.webhookUrl,
-      syncEnabled: validatedData.syncEnabled,
-      pushEnabled: validatedData.pushEnabled,
       authType: validatedData.authType,
       username: validatedData.username,
       password: encryptedPassword,
+      platformId: validatedData.platformId,
+      settings: validatedData.settings,
       isConnected: false,
       createdAt: new Date(),
     }).returning();

@@ -9,7 +9,7 @@ function handleClerkProxy(req: NextRequest): NextResponse | null {
   const proxyHeaders = new Headers(req.headers);
   proxyHeaders.set(
     "Clerk-Proxy-Url",
-    process.env.NEXT_PUBLIC_CLERK_PROXY_URL || ""
+    "https://extreme.nxtdotx.online/__clerk"
   );
   proxyHeaders.set(
     "Clerk-Secret-Key",
@@ -21,7 +21,7 @@ function handleClerkProxy(req: NextRequest): NextResponse | null {
   );
 
   const proxyUrl = new URL(req.url);
-  proxyUrl.host = "frontend-api.clerk.dev";
+  proxyUrl.host = "frontend-api.clerk.services";
   proxyUrl.port = "443";
   proxyUrl.protocol = "https";
   proxyUrl.pathname = proxyUrl.pathname.replace("/__clerk", "");

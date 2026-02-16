@@ -7,7 +7,7 @@ const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   defaultHeaders: {
     "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-    "X-Title": "MobileMate",
+    "X-Title": "NXT Social Extreme",
   },
 });
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       return NextResponse.json({
         content: `[SIMULATION MODE - NO API KEY]\n\nExcited to share this with our ${platform} community! ${prompt}\n\n(To enable real AI, add OPENROUTER_API_KEY to .env.local)`,
-        hashtags: ["#Simulation", "#MobileMate"],
+        hashtags: ["#Simulation", "#NXTSocialExtreme"],
         usage: { model: "simulator", tokens: 0 }
       });
     }

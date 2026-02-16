@@ -1,7 +1,7 @@
 /**
  * Database Seed Script
  * 
- * Creates initial channels for MobileMate
+ * Creates initial channels for NXT Social Extreme
  * Run with: bun run db:seed
  */
 

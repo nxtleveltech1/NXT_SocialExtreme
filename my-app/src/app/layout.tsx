@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MobileMate - Social Media Marketing",
-  description: "Manage your Facebook, Instagram, TikTok, and WhatsApp channels with ease.",
+  title: "NXT Social Extreme - Social Media Marketing",
+  description: "Manage your Facebook, Instagram, TikTok, and WhatsApp channels with extreme precision.",
 };
 
 export default async function RootLayout({
@@ -34,7 +34,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}>
         <QueryProvider>
           <StackProvider app={stackServerApp}>
             <StackTheme>
@@ -44,14 +44,16 @@ export default async function RootLayout({
                 <Sidebar />
                 
                 <div className="flex flex-col flex-1 w-full overflow-hidden">
-                  <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200">
+                  <header className="h-16 flex items-center justify-between px-6 bg-card border-b border-border">
                     <div className="lg:hidden flex items-center">
-                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        MobileMate
+                      <span className="text-xl font-extrabold tracking-tight">
+                        <span className="text-red-800">NXT</span>
+                        <span className="text-gray-500 mx-1">Social</span>
+                        <span className="text-red-700 italic">Extreme</span>
                       </span>
                     </div>
                     <div className="hidden lg:block">
-                      <h2 className="text-lg font-semibold text-gray-800">Welcome back, {user.displayName || user.primaryEmail}</h2>
+                      <h2 className="text-lg font-semibold text-foreground">Welcome back, {user.displayName || user.primaryEmail}</h2>
                     </div>
                     <div className="flex items-center space-x-4">
                       <button className="p-2 text-gray-400 hover:text-gray-600">

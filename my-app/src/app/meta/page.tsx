@@ -159,7 +159,7 @@ export default function MetaCommandCenter() {
   const [flowPhone, setFlowPhone] = useState("");
   const [flowId, setFlowId] = useState("");
   const [adAccountId, setAdAccountId] = useState("");
-  const [audienceName, setAudienceName] = useState("MobileMate VIPs");
+  const [audienceName, setAudienceName] = useState("NXT Social Extreme VIPs");
   const [pageId, setPageId] = useState("");
   const [selectedCampaignPlatformId, setSelectedCampaignPlatformId] = useState<string>("");
   

@@ -15,7 +15,7 @@ const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   defaultHeaders: {
     "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-    "X-Title": "MobileMate Auto-Responder",
+    "X-Title": "NXT Social Extreme Auto-Responder",
   },
 });
 
@@ -42,7 +42,7 @@ interface AgentConfig {
 const DEFAULT_CONFIG: AgentConfig = {
   autoReplyEnabled: false, // Manual approval by default
   confidenceThreshold: 80,
-  businessName: "MobileMate",
+  businessName: "NXT Social Extreme",
   businessDescription: "Social media management platform",
 };
 

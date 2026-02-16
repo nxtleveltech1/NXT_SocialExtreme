@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
 export default function AppPromoCard() {
-  const appUrl = "https://v0-whats-app-sales-app-alpha.vercel.app/"
+  const appUrl = "/store"
 
   const openApp = () => {
     window.open(appUrl, "_blank")
@@ -24,7 +24,7 @@ export default function AppPromoCard() {
             <p className="text-green-100 text-sm">Loja de Eletrônicos</p>
           </div>
         </div>
-        <Badge className="bg-yellow-400 text-green-800 font-semibold">🔥 Produtos em Destaque</Badge>
+        <Badge className="bg-yellow-400 text-green-800 font-semibold">Produtos em Destaque</Badge>
       </div>
 
       {/* Content */}
@@ -49,19 +49,19 @@ export default function AppPromoCard() {
           <h3 className="font-semibold mb-3 text-center">Produtos Disponíveis:</h3>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-white/20 rounded p-2 text-center">
-              <div>🎧 Fones Bluetooth</div>
+              <div>Fones Bluetooth</div>
               <div className="text-green-200">R$ 299,99</div>
             </div>
             <div className="bg-white/20 rounded p-2 text-center">
-              <div>🔌 Carregadores</div>
+              <div>Carregadores</div>
               <div className="text-green-200">R$ 89,99</div>
             </div>
             <div className="bg-white/20 rounded p-2 text-center">
-              <div>🔗 Cabos USB-C</div>
+              <div>Cabos USB-C</div>
               <div className="text-green-200">R$ 49,99</div>
             </div>
             <div className="bg-white/20 rounded p-2 text-center">
-              <div>🔋 Power Banks</div>
+              <div>Power Banks</div>
               <div className="text-green-200">R$ 159,99</div>
             </div>
           </div>
@@ -79,19 +79,17 @@ export default function AppPromoCard() {
 
         {/* URL Display */}
         <div className="mt-4 p-3 bg-white/10 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <QrCode className="h-4 w-4 text-green-200" />
-              <span className="text-xs text-green-100">Link direto:</span>
-            </div>
+          <div className="flex items-center space-x-2">
+            <QrCode className="h-4 w-4 text-green-200" />
+            <span className="text-xs text-green-100">Link direto:</span>
           </div>
           <div className="text-xs text-white font-mono mt-1 break-all">{appUrl}</div>
         </div>
 
         {/* WhatsApp Info */}
         <div className="mt-4 text-center">
-          <p className="text-xs text-green-100">📱 Faça seu pedido e receba via WhatsApp</p>
-          <p className="text-xs text-green-200 font-semibold">Entrega rápida • Produtos originais</p>
+          <p className="text-xs text-green-100">Faça seu pedido e receba via WhatsApp</p>
+          <p className="text-xs text-green-200 font-semibold">Entrega rápida - Produtos originais</p>
         </div>
       </div>
     </div>

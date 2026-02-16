@@ -513,7 +513,7 @@ export default function ConnectionModal({ isOpen, onClose, channel, onSuccess }:
                       <ol className="text-xs text-gray-600 space-y-1 list-decimal list-inside">
                         <li>Click "Connect <span className="capitalize">{normalizedPlatform}</span>" below</li>
                         <li>Log in with your normal {normalizedPlatform === "facebook" ? "Facebook" : "Instagram"} account</li>
-                        <li>Authorize MobileMate to access your {normalizedPlatform === "facebook" ? "Page" : "Business Account"}</li>
+                        <li>Authorize NXT Social Extreme to access your {normalizedPlatform === "facebook" ? "Page" : "Business Account"}</li>
                         <li>Select which {normalizedPlatform === "facebook" ? "Page" : "Account"} to connect</li>
                         <li>Done! Your channel will be connected.</li>
                       </ol>
@@ -544,7 +544,7 @@ export default function ConnectionModal({ isOpen, onClose, channel, onSuccess }:
                     type="button" 
                     onClick={startOauth} 
                     disabled={isLoading}
-                    className="bg-blue-600 hover:bg-blue-700 capitalize"
+                    className="bg-red-800 hover:bg-red-700 capitalize"
                   >
                     {isLoading ? (
                       <>
@@ -600,7 +600,7 @@ export default function ConnectionModal({ isOpen, onClose, channel, onSuccess }:
             )}
 
             <p className="text-[10px] text-muted-foreground">
-              Your password is never stored by MobileMate in plain text. It is encrypted using AES-256-GCM and can only be used for authentication.
+              Your password is never stored by NXT Social Extreme in plain text. It is encrypted using AES-256-GCM and can only be used for authentication.
             </p>
           </div>
         )}

@@ -1,5 +1,5 @@
 /**
- * MobileMate Automation Agents
+ * NXT Social Extreme Automation Agents
  * 
  * Phase 3: World Class Automation
  * 

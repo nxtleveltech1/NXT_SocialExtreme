@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import StoryPromo from "@/components/story-promo"
+import StoryPromo from "@/components/store/StoryPromo"
 import { Button } from "@/components/ui/button"
 import { Share2 } from "lucide-react"
 
@@ -13,18 +13,17 @@ export default function StoriesPage() {
       <div className="max-w-md mx-auto">
         {showInstructions && (
           <div className="bg-white rounded-lg p-4 mb-4 shadow-md">
-            <h1 className="text-xl font-bold text-gray-800 mb-2">Stories para Instagram/WhatsApp</h1>
+            <h1 className="text-xl font-bold text-gray-800 mb-2">Stories for Instagram/WhatsApp</h1>
             <p className="text-gray-600 mb-4">
-              Versão otimizada para compartilhamento em Stories. Visualize como ficará e use os botões abaixo para
-              compartilhar.
+              Optimized version for sharing on Stories. Preview the content and use the buttons below to share.
             </p>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm" onClick={() => setShowInstructions(false)}>
-                Esconder instruções
+                Hide instructions
               </Button>
               <Button size="sm">
                 <Share2 className="h-4 w-4 mr-1" />
-                Compartilhar
+                Share
               </Button>
             </div>
           </div>
@@ -37,8 +36,8 @@ export default function StoriesPage() {
         </div>
 
         <div className="mt-4 text-center text-gray-500 text-sm">
-          <p>Formato otimizado para Stories (9:16)</p>
-          <p>Deslize ou clique nos indicadores para ver todos os slides</p>
+          <p>Optimized format for Stories (9:16)</p>
+          <p>Swipe or click indicators to see all slides</p>
         </div>
       </div>
     </div>

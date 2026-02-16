@@ -1,4 +1,4 @@
-import DownloadGenerator from "@/components/download-generator"
+import DownloadGenerator from "@/components/store/DownloadGenerator"
 
 export default function DownloadPage() {
   return (

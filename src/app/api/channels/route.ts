@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/db';
-import { channels, channelWebhookEvents } from '@/db/schema';
+import { channels } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { encryptSecret } from '@/lib/crypto';

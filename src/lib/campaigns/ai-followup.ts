@@ -231,7 +231,7 @@ export async function processIncomingReply(
 
   // Fall back to built-in auto-responses
   if (!action.responseText && classification.suggestedAction === "auto_respond") {
-    action.responseText = AUTO_RESPONSES[classification.intent] || null;
+    action.responseText = AUTO_RESPONSES[classification.intent] || undefined;
   }
 
   // Send auto-response if we have one

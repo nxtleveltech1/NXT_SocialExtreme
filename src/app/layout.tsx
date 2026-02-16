@@ -34,7 +34,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await currentUser();
+  let user = null;
+  try {
+    user = await currentUser();
+  } catch {
+    // Clerk server call failed — continue without user data
+  }
 
   return (
     <ClerkProvider>

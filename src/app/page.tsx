@@ -36,7 +36,13 @@ const stats = [
 ];
 
 export default async function Dashboard() {
-  const { userId } = await auth();
+  let userId: string | null = null;
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+  } catch {
+    // Clerk auth failed — treat as unauthenticated
+  }
 
   if (!userId) {
     return <LoginLanding />;

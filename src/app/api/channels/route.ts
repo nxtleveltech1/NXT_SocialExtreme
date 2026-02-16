@@ -14,7 +14,7 @@ const ChannelSchema = z.object({
   username: z.string().optional(),
   password: z.string().optional(),
   platformId: z.string().optional(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 const MessageQueueSchema = z.object({

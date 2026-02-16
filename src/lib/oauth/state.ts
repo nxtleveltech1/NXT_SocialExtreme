@@ -23,7 +23,20 @@ function parseKey(raw: string): Buffer {
   return buf;
 }
 
-const KEY = parseKey(env.TOKEN_ENCRYPTION_KEY);
+let _cachedKey: Buffer | null = null;
+
+function getKey(): Buffer {
+  if (!_cachedKey) {
+    const raw = env.TOKEN_ENCRYPTION_KEY;
+    if (!raw) {
+      throw new Error(
+        "TOKEN_ENCRYPTION_KEY is not set. Add it to your .env.local (or Vercel project env) to use OAuth state signing."
+      );
+    }
+    _cachedKey = parseKey(raw);
+  }
+  return _cachedKey;
+}
 
 function base64UrlEncode(buf: Buffer): string {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -36,7 +49,7 @@ function base64UrlDecode(input: string): Buffer {
 }
 
 function sign(data: string): string {
-  const mac = crypto.createHmac("sha256", KEY).update(data, "utf8").digest();
+  const mac = crypto.createHmac("sha256", getKey()).update(data, "utf8").digest();
   return base64UrlEncode(mac);
 }
 

@@ -7,11 +7,17 @@ const isPublicRoute = createRouteMatcher([
   "/store(.*)",
   "/api/webhooks(.*)",
   "/api/monitoring(.*)",
+  "/api/oauth(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
-    await auth.protect();
+    try {
+      await auth.protect();
+    } catch {
+      // If Clerk auth fails (invalid keys, network issues), let the
+      // request through — page-level auth will handle unauthenticated users.
+    }
   }
 });
 

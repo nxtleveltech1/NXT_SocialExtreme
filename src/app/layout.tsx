@@ -42,7 +42,10 @@ export default async function RootLayout({
   }
 
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      signInFallbackRedirectUrl="/"
+      signUpFallbackRedirectUrl="/"
+    >
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}>
           <QueryProvider>

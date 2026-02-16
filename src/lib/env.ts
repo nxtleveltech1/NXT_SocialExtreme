@@ -22,8 +22,8 @@ export const env = {
   NODE_ENV: (process.env.NODE_ENV ?? "development") as "development" | "test" | "production",
   DATABASE_URL: requireEnv("DATABASE_URL"),
 
-  // Security
-  TOKEN_ENCRYPTION_KEY: requireEnv("TOKEN_ENCRYPTION_KEY"),
+  // Security — optional at startup; required only when encrypting tokens
+  TOKEN_ENCRYPTION_KEY: getEnv("TOKEN_ENCRYPTION_KEY"),
   JOB_RUNNER_SECRET: getEnv("JOB_RUNNER_SECRET"),
 
   // Providers (added in later phases; optional for local UI work)
@@ -61,9 +61,10 @@ export const env = {
   TIKTOK_CLIENT_SECRET: getEnv("TIKTOK_CLIENT_SECRET"),
   TIKTOK_REDIRECT_URI: getEnv("TIKTOK_REDIRECT_URI"),
 
-  // Clerk Auth
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: requireEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"),
-  CLERK_SECRET_KEY: requireEnv("CLERK_SECRET_KEY"),
+  // Clerk Auth — Clerk SDK reads these directly from process.env;
+  // we expose them here for reference but do not crash on missing.
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: getEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"),
+  CLERK_SECRET_KEY: getEnv("CLERK_SECRET_KEY"),
 } as const;
 
 

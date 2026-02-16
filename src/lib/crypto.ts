@@ -28,7 +28,20 @@ function parseKey(raw: string): Buffer {
   return buf;
 }
 
-const KEY = parseKey(env.TOKEN_ENCRYPTION_KEY);
+let _cachedKey: Buffer | null = null;
+
+function getKey(): Buffer {
+  if (!_cachedKey) {
+    const raw = env.TOKEN_ENCRYPTION_KEY;
+    if (!raw) {
+      throw new Error(
+        "TOKEN_ENCRYPTION_KEY is not set. Add it to your .env.local (or Vercel project env) to use encryption features."
+      );
+    }
+    _cachedKey = parseKey(raw);
+  }
+  return _cachedKey;
+}
 
 /**
  * Encrypt a secret using AES-256-GCM.
@@ -37,6 +50,7 @@ const KEY = parseKey(env.TOKEN_ENCRYPTION_KEY);
  *   v1:<base64(iv)>:<base64(tag)>:<base64(ciphertext)>
  */
 export function encryptSecret(plaintext: string): string {
+  const KEY = getKey();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv("aes-256-gcm", KEY, iv);
   const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
@@ -65,6 +79,7 @@ export function decryptSecret(value: string): string {
   const tag = Buffer.from(parts[2], "base64");
   const ciphertext = Buffer.from(parts[3], "base64");
 
+  const KEY = getKey();
   const decipher = crypto.createDecipheriv("aes-256-gcm", KEY, iv);
   decipher.setAuthTag(tag);
   const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);

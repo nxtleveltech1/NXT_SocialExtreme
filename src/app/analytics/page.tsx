@@ -13,7 +13,9 @@ import {
 
 import { db } from "@/db/db";
 import { channels as channelsTable, posts as postsTable } from "@/db/schema";
-import { sql, gte, desc } from "drizzle-orm";
+import { sql, gte, desc, InferSelectModel } from "drizzle-orm";
+
+type Channel = InferSelectModel<typeof channelsTable>;
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +27,7 @@ const platformIcons = {
 };
 
 export default async function AnalyticsPage() {
-  let channels = [];
+  let channels: Channel[] = [];
   let totalImpressions = [{ sum: 0 }];
   let totalEngagement = [{ likes: 0, comments: 0, shares: 0, reach: 0 }];
   let totalPosts = [{ count: 0 }];

@@ -15,7 +15,9 @@ import { db } from "@/db/db";
 import { posts as postsTable } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, InferSelectModel } from "drizzle-orm";
+
+type Post = InferSelectModel<typeof postsTable>;
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +30,7 @@ const platformIcons = {
 };
 
 export default async function SchedulerPage() {
-  let scheduledPosts = [];
+  let scheduledPosts: Post[] = [];
   try {
     scheduledPosts = await db
       .select()

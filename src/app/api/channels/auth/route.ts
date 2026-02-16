@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate based on platform
-    let authResult;
+    let authResult: { success: boolean; accessToken?: string; error?: string };
     switch (channel.platform) {
       case 'facebook':
         authResult = await authenticateFacebook(validatedData.username, validatedData.password);

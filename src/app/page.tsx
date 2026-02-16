@@ -13,6 +13,9 @@ import {
 
 import { db } from "@/db/db";
 import { channels as channelsTable } from "@/db/schema";
+import { InferSelectModel } from "drizzle-orm";
+
+type Channel = InferSelectModel<typeof channelsTable>;
 import { stackServerApp } from "@/stack";
 import LoginLanding from "@/components/LoginLanding";
 
@@ -41,7 +44,7 @@ export default async function Dashboard() {
   }
 
   // User is authenticated, show dashboard
-  let channels = [];
+  let channels: Channel[] = [];
   try {
     channels = await db.select().from(channelsTable);
   } catch (error: any) {

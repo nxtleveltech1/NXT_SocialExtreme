@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { db } from "@/db/db";
 import { posts as postsTable } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, InferSelectModel } from "drizzle-orm";
+
+type Post = InferSelectModel<typeof postsTable>;
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,7 @@ const platformIcons = {
 };
 
 export default async function HistoryPage() {
-  let posts = [];
+  let posts: Post[] = [];
   try {
     posts = await db.select().from(postsTable).orderBy(desc(postsTable.date));
   } catch (error: any) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/db";
 import { channels, ads, adSets, adCampaigns } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, InferSelectModel } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
 
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Return from database
-    let storedAds;
+    let storedAds: InferSelectModel<typeof ads>[] = [];
     if (adSetId) {
       const [adSet] = await db
         .select()

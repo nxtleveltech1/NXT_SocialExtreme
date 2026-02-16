@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    let result;
+    let result: unknown;
     if (platform === "Facebook" || platform === "Instagram") {
       const { syncMetaChannel } = await import("@/lib/integrations/meta");
       result = await syncMetaChannel(parseInt(channelId));

@@ -9,9 +9,26 @@
  * - Content Engine: Generates content ideas and drafts for approval
  */
 
-export * from "./auto-responder";
+export {
+  DEFAULT_CONFIG as AUTO_RESPONDER_DEFAULT_CONFIG,
+  type AgentConfig,
+  type MessageIntent,
+  type ClassifiedMessage,
+  classifyMessageIntent,
+  generateResponse,
+  processUnreadMessages,
+} from "./auto-responder";
 export * from "./ad-optimizer";
-export * from "./content-engine";
+export {
+  DEFAULT_CONFIG as CONTENT_ENGINE_DEFAULT_CONFIG,
+  type ContentEngineConfig,
+  type ContentTopic,
+  type GeneratedDraft,
+  generateContentIdeas,
+  generatePostDraft,
+  generateWeeklyContent,
+  saveDraftAsPost,
+} from "./content-engine";
 
 // Agent runner types
 export interface AgentRunResult {

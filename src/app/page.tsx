@@ -16,7 +16,7 @@ import { channels as channelsTable } from "@/db/schema";
 import { InferSelectModel } from "drizzle-orm";
 
 type Channel = InferSelectModel<typeof channelsTable>;
-import { stackServerApp } from "@/stack";
+import { auth } from "@clerk/nextjs/server";
 import LoginLanding from "@/components/LoginLanding";
 
 export const dynamic = "force-dynamic";
@@ -36,20 +36,16 @@ const stats = [
 ];
 
 export default async function Dashboard() {
-  const user = await stackServerApp.getUser();
+  const { userId } = await auth();
 
-  // If not authenticated, show landing/login page
-  if (!user) {
+  if (!userId) {
     return <LoginLanding />;
   }
 
-  // User is authenticated, show dashboard
   let channels: Channel[] = [];
   try {
     channels = await db.select().from(channelsTable);
-  } catch (error: any) {
-    // Silently handle database errors - tables may not exist yet
-    // This is expected if migrations haven't been run
+  } catch (error: unknown) {
     if (process.env.NODE_ENV === 'development') {
       console.warn("Database not initialized. Run 'bun run db:push' to create tables.");
     }

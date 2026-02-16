@@ -67,6 +67,8 @@ export async function getAllConversations(): Promise<UnifiedConversation[]> {
 
       return {
         ...conv,
+        time: conv.time ?? new Date(),
+        unread: conv.unread ?? false,
         unreadCount: unreadMessages.length,
         latestMessage: latestMessage
           ? {

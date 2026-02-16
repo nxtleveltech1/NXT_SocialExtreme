@@ -9,7 +9,7 @@ import {
   whatsappConversations,
   channels,
 } from "@/db/schema"
-import { eq, and } from "drizzle-orm"
+import { eq, and, InferSelectModel } from "drizzle-orm"
 import { sendWhatsAppMessageComprehensive } from "@/lib/integrations/meta-comprehensive"
 
 export const dynamic = "force-dynamic"
@@ -24,8 +24,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "phoneNumber is required" }, { status: 400 })
     }
 
-    let cart: { id: number; conversationId: number | null; status: string } | undefined
-    let cartItemsData: Array<Record<string, unknown>> = []
+    let cart: InferSelectModel<typeof shoppingCarts> | undefined
+    let cartItemsData: Array<{
+      id?: number;
+      productId?: number;
+      quantity: number;
+      priceAtTime?: number;
+      price?: number;
+      productName?: string;
+      name?: string;
+    }> = []
 
     if (conversationId) {
       // Get cart from conversation
@@ -73,12 +81,12 @@ export async function POST(req: NextRequest) {
 
     // Calculate total
     const totalAmount = cartItemsData.reduce(
-      (sum, item) => sum + (item.priceAtTime || item.price) * item.quantity,
+      (sum, item) => sum + (item.priceAtTime ?? item.price ?? 0) * item.quantity,
       0
     )
 
     // Get conversation info if available
-    let conversation: { id: number; userName: string | null } | null = null
+    let conversation: InferSelectModel<typeof whatsappConversations> | null = null
     if (conversationId) {
       const [conv] = await db
         .select()
@@ -104,13 +112,14 @@ export async function POST(req: NextRequest) {
 
     // Create order items
     for (const item of cartItemsData) {
+      const price = item.priceAtTime ?? item.price ?? 0;
       await db.insert(orderItems).values({
         orderId: order.id,
-        productId: item.productId,
-        productName: item.productName || "Product",
+        productId: item.productId ?? 0,
+        productName: item.productName ?? item.name ?? "Product",
         quantity: item.quantity,
-        priceAtTime: item.priceAtTime || item.price,
-        subtotal: (item.priceAtTime || item.price) * item.quantity,
+        priceAtTime: price,
+        subtotal: price * item.quantity,
       })
     }
 
@@ -123,7 +132,7 @@ export async function POST(req: NextRequest) {
     let message = "🛒 *Hello! I would like to place an order:*\n\n"
 
     cartItemsData.forEach((item, index) => {
-      const price = item.priceAtTime || item.price
+      const price = item.priceAtTime ?? item.price ?? 0
       const subtotal = price * item.quantity
       message += `${index + 1}. *${item.productName || "Product"}*\n`
       message += `   Quantity: ${item.quantity}\n`
@@ -174,15 +183,17 @@ export async function GET(req: NextRequest) {
     const conversationId = searchParams.get("conversationId")
     const phoneNumber = searchParams.get("phoneNumber")
 
-    let query = db.select().from(orders)
-
-    if (conversationId) {
-      query = query.where(eq(orders.conversationId, parseInt(conversationId)))
-    } else if (phoneNumber) {
-      query = query.where(eq(orders.phoneNumber, phoneNumber))
-    }
-
-    const ordersList = await query.orderBy(orders.createdAt)
+    const ordersList = await db
+      .select()
+      .from(orders)
+      .where(
+        conversationId
+          ? eq(orders.conversationId, parseInt(conversationId))
+          : phoneNumber
+            ? eq(orders.phoneNumber, phoneNumber)
+            : undefined
+      )
+      .orderBy(orders.createdAt)
 
     // Get order items for each order
     const ordersWithItems = await Promise.all(

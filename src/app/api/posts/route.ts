@@ -11,21 +11,17 @@ export async function GET(req: Request) {
   const channelId = url.searchParams.get("channelId");
   const limit = parseInt(url.searchParams.get("limit") || "100");
 
-  let query = db.select().from(posts).orderBy(desc(posts.date)).limit(limit);
-  
-  const conditions = [];
-  if (status) {
-    conditions.push(eq(posts.status, status));
-  }
-  if (channelId) {
-    conditions.push(eq(posts.channelId, parseInt(channelId)));
-  }
-  
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions));
-  }
-
-  const rows = await query;
+  const rows = await db
+    .select()
+    .from(posts)
+    .where(
+      and(
+        status ? eq(posts.status, status) : undefined,
+        channelId ? eq(posts.channelId, parseInt(channelId)) : undefined
+      )
+    )
+    .orderBy(desc(posts.date))
+    .limit(limit);
 
   return NextResponse.json({ posts: rows });
 }

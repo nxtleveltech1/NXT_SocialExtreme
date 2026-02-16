@@ -236,7 +236,7 @@ export async function runAdOptimization(
         : metrics;
 
       if (evaluateRule(rule, ruleMetrics)) {
-        let newStatus = ad.status;
+        let newStatus: string = ad.status || "ACTIVE";
         let actionTaken = "";
 
         if (rule.action === "pause" && channel.accessToken) {

@@ -161,9 +161,9 @@ export async function syncAdSetsSDK(
   const sdk = getMetaSDK(channel);
   const adSetsData = await sdk.getAdSets(adAccountId, campaignId);
 
-  const adSets = [];
+  const adSetsList = [];
   for await (const adSet of adSetsData) {
-    adSets.push({
+    adSetsList.push({
       id: adSet.id,
       name: adSet.name,
       campaign_id: adSet.campaign_id,
@@ -203,7 +203,7 @@ export async function syncAdSetsSDK(
     }
   }
 
-  return { success: true, adSetsCount: adSets.length, adSets };
+  return { success: true, adSetsCount: adSetsList.length, adSets: adSetsList };
 }
 
 // ==================== INSIGHTS ====================

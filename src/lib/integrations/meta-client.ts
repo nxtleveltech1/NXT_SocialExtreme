@@ -24,7 +24,7 @@ export class MetaApiClient {
     this.baseUrl = FB_GRAPH_URL;
   }
 
-  private async request<T>(
+  async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
@@ -118,13 +118,16 @@ export class MetaApiClient {
     url?: string;
     attached_media?: Array<{ media_fbid: string }>;
   }) {
-    const body = new URLSearchParams({
+    const searchParams: Record<string, string> = {
       access_token: this.accessToken,
-      ...params,
-    });
+      ...(params.message && { message: params.message }),
+      ...(params.link && { link: params.link }),
+      ...(params.url && { url: params.url }),
+    };
     if (params.attached_media) {
-      body.set("attached_media", JSON.stringify(params.attached_media));
+      searchParams.attached_media = JSON.stringify(params.attached_media);
     }
+    const body = new URLSearchParams(searchParams);
 
     return this.request<{ id: string }>(`/${pageId}/feed`, {
       method: "POST",
@@ -1018,6 +1021,7 @@ export class MetaApiClient {
   ) {
     return this.createInstagramMediaContainer(igUserId, {
       ...params,
+      caption: params.caption ?? "",
       media_type: "REELS", // For some reason Meta uses REELS container for Stories sometimes, or specialized STORY flag
       // Actually, for stories it's often just image_url/video_url with is_story=true
     });

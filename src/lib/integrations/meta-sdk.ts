@@ -4,6 +4,7 @@
  * Reference: https://developers.facebook.com/docs/business-sdk/getting-started
  */
 
+// @ts-expect-error no types available
 import * as bizSdk from "facebook-nodejs-business-sdk";
 
 const FacebookAdsApi = bizSdk.FacebookAdsApi;

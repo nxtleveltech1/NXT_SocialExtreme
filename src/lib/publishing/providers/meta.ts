@@ -113,8 +113,8 @@ async function publishToFacebookPage(
   // If there's media, we need to upload it first and get an attachment_share_id
   // For now, we'll support simple text posts and posts with image URLs.
   // Full Vercel Blob upload integration comes in a later phase.
-  const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
-  const firstMediaUrl = hasMedia ? post.mediaUrls[0] : null;
+  const hasMedia = (post.mediaUrls ?? []).length > 0;
+  const firstMediaUrl = hasMedia ? (post.mediaUrls ?? [])[0] : null;
 
   const body: Record<string, string> = {
     message,
@@ -155,12 +155,13 @@ async function publishToInstagramBusiness(
   post: PostRow,
   accessToken: string
 ): Promise<{ platformPostId: string }> {
-  const igUserId = channel.platformId;
+  const igUserId = channel.platformId ?? "";
+  if (!igUserId) throw new Error("Channel missing platformId");
   const caption = post.content || "";
 
   // Instagram requires media (image or video)
-  const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
-  const firstMediaUrl = hasMedia ? post.mediaUrls[0] : null;
+  const hasMedia = (post.mediaUrls ?? []).length > 0;
+  const firstMediaUrl = hasMedia ? (post.mediaUrls ?? [])[0] : null;
 
   if (!firstMediaUrl || !firstMediaUrl.startsWith("http")) {
     throw new Error("Instagram requires a media URL (image or video) to publish");
@@ -245,7 +246,7 @@ async function waitForMediaProcessing(
       `ig-status-${igUserId}`
     );
 
-    const statusCode = statusData.status_code as string;
+    const statusCode = (statusData.status_code ?? "") as string;
 
     if (statusCode === "FINISHED") {
       return; // Ready to publish

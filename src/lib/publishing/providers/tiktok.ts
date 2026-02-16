@@ -26,8 +26,9 @@ export async function publishToTikTok(channel: ChannelRow, post: PostRow): Promi
   const openId = channel.platformId;
 
   // TikTok requires a video URL (must be publicly accessible)
-  const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
-  const videoUrl = hasMedia ? post.mediaUrls.find((url) => url.match(/\.(mp4|mov|avi|mkv)$/i)) : null;
+  const mediaUrls = post.mediaUrls ?? [];
+  const hasMedia = mediaUrls.length > 0;
+  const videoUrl = hasMedia ? mediaUrls.find((url) => url.match(/\.(mp4|mov|avi|mkv)$/i)) : null;
 
   if (!videoUrl || !videoUrl.startsWith("http")) {
     throw new Error("TikTok requires a publicly accessible video URL (MP4, MOV, AVI, or MKV)");

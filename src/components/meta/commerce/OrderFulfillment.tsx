@@ -139,7 +139,7 @@ export default function OrderFulfillment({ order, channelId, cmsId }: OrderFulfi
         </Button>
       )}
 
-      {order.status === "confirmed" || order.status === "processing" ? (
+      {(order.status === "confirmed" || order.status === "processing") ? (
         <>
           {!showShipForm ? (
             <Button
@@ -193,7 +193,7 @@ export default function OrderFulfillment({ order, channelId, cmsId }: OrderFulfi
             </div>
           )}
         </>
-      )}
+      ) : null}
     </Card>
   );
 }

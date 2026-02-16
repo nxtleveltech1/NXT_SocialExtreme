@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db/db"
 import { salesProducts } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 
 export const dynamic = "force-dynamic"
 
@@ -12,13 +12,15 @@ export async function GET(req: NextRequest) {
     const channelId = searchParams.get("channelId")
     const category = searchParams.get("category")
 
-    let query = db.select().from(salesProducts).where(eq(salesProducts.isActive, true))
-
-    if (channelId) {
-      query = query.where(eq(salesProducts.channelId, parseInt(channelId)))
-    }
-
-    const products = await query
+    const products = await db
+      .select()
+      .from(salesProducts)
+      .where(
+        and(
+          eq(salesProducts.isActive, true),
+          channelId ? eq(salesProducts.channelId, parseInt(channelId)) : undefined
+        )
+      )
 
     // Filter by category if provided
     const filteredProducts = category

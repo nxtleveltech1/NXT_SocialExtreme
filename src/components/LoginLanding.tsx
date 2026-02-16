@@ -1,12 +1,10 @@
 "use client";
 
-import { useStackApp } from "@stackframe/stack";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Facebook, Instagram, Video, MessageSquare, ArrowRight } from "lucide-react";
 
 export default function LoginLanding() {
-  const app = useStackApp();
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 p-4">
       <div className="max-w-4xl w-full">
@@ -75,28 +73,30 @@ export default function LoginLanding() {
               </div>
 
               <div className="space-y-4">
-                <Button 
-                  onClick={() => app.redirectToSignIn()} 
-                  className="w-full h-12 text-base font-semibold bg-red-800 hover:bg-red-700 text-white"
-                  size="lg"
-                >
-                  Sign In
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-                
-                <Button 
-                  onClick={() => app.redirectToSignUp()} 
-                  variant="outline"
-                  className="w-full h-12 text-base font-semibold border-neutral-700 text-neutral-200 hover:bg-neutral-800"
-                  size="lg"
-                >
-                  Create Account
-                </Button>
+                <SignInButton mode="redirect">
+                  <Button
+                    className="w-full h-12 text-base font-semibold bg-red-800 hover:bg-red-700 text-white"
+                    size="lg"
+                  >
+                    Sign In
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </SignInButton>
+
+                <SignUpButton mode="redirect">
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 text-base font-semibold border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+                    size="lg"
+                  >
+                    Create Account
+                  </Button>
+                </SignUpButton>
               </div>
 
               <div className="mt-8 p-4 bg-neutral-800 border border-neutral-700 rounded-lg">
                 <p className="text-sm text-neutral-300">
-                  <strong className="text-red-400">Simple Login:</strong> Just use your email and password. Once you're logged in, you'll have access to all your channels and data. No complicated setup required!
+                  <strong className="text-red-400">Simple Login:</strong> Just use your email and password. Once you&apos;re logged in, you&apos;ll have access to all your channels and data. No complicated setup required!
                 </p>
               </div>
             </div>
@@ -106,6 +106,3 @@ export default function LoginLanding() {
     </div>
   );
 }
-
-
-

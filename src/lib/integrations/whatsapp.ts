@@ -4,6 +4,7 @@ import { z } from 'zod';
 const WhatsAppMessageSchema = z.object({
   to: z.string(),
   type: z.enum(['text', 'image', 'video', 'document', 'template', 'interactive']),
+  interactive: z.record(z.string(), z.unknown()).optional(),
   text: z.object({
     body: z.string(),
   }).optional(),
@@ -57,7 +58,7 @@ export class WhatsAppIntegration {
           messaging_product: 'whatsapp',
           to: validatedMessage.to,
           type: validatedMessage.type,
-          [validatedMessage.type]: validatedMessage[validatedMessage.type],
+          [validatedMessage.type]: (validatedMessage as Record<string, unknown>)[validatedMessage.type],
         }),
       });
 
@@ -70,7 +71,7 @@ export class WhatsAppIntegration {
       }
     } catch (error) {
       console.error('WhatsApp send error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as Error).message };
     }
   }
 
@@ -169,7 +170,7 @@ export class WhatsAppMultiProvider {
         const result = await provider.sendMessage(messageData);
         results.push({ provider: name, result });
       } catch (error) {
-        results.push({ provider: name, error: error.message });
+        results.push({ provider: name, error: (error as Error).message });
       }
     }
     return results;

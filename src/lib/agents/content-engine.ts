@@ -335,4 +335,4 @@ function getDefaultIdeas(topic: ContentTopic): string[] {
   ];
 }
 
-export { DEFAULT_CONFIG, type ContentEngineConfig };
+export { DEFAULT_CONFIG };

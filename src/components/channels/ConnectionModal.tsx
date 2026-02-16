@@ -32,7 +32,7 @@ interface Channel {
   id: number;
   name: string;
   platform: string;
-  authType: string;
+  authType?: string;
 }
 
 interface ConnectionModalProps {

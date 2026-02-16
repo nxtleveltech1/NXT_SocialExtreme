@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
-import { stackServerApp } from "@/stack";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 /**
- * Require authentication for API routes using Stack Auth
- * Returns user if authenticated, throws error if not
+ * Require authentication for API routes using Clerk
+ * Returns userId if authenticated, throws error if not
  */
 export async function requireAuth() {
-  const user = await stackServerApp.getUser();
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  return { userId };
+}
+
+/**
+ * Get the full Clerk user object (use when you need name/email)
+ */
+export async function requireUser() {
+  const user = await currentUser();
   if (!user) {
     throw new Error("Unauthorized");
   }
@@ -16,17 +27,21 @@ export async function requireAuth() {
 /**
  * Wrapper for API routes that require authentication
  */
-export function withAuth(handler: (user: Awaited<ReturnType<typeof requireAuth>>, req: Request) => Promise<Response>) {
+export function withAuth(
+  handler: (
+    user: Awaited<ReturnType<typeof requireAuth>>,
+    req: Request
+  ) => Promise<Response>
+) {
   return async (req: Request) => {
     try {
       const user = await requireAuth();
       return handler(user, req);
-    } catch (error: any) {
-      if (error.message === "Unauthorized") {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === "Unauthorized") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       throw error;
     }
   };
 }
-

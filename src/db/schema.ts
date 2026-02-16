@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, serial, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 export const channels = pgTable("channels", {
   id: serial("id").primaryKey(),
@@ -105,7 +105,7 @@ export const messages = pgTable("messages", {
   // Platform-specific data
   metadata: jsonb("metadata"), // Platform-specific fields
   // Threading
-  replyToMessageId: integer("reply_to_message_id").references(() => messages.id), // For threaded replies
+  replyToMessageId: integer("reply_to_message_id").references((): AnyPgColumn => messages.id), // For threaded replies
   createdAt: timestamp("created_at").defaultNow(),
 });
 

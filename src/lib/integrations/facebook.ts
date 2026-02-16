@@ -22,7 +22,7 @@ export async function syncFacebookData(channelId: number) {
     const accessToken = decryptSecret(channel.accessToken);
 
     // 1. Fetch Posts from Facebook Graph API
-    let fbPosts: Record<string, unknown>[] = [];
+    let fbPosts: any[] = [];
     
     // Requesting rich data: Full Picture, Permalink, Shares, Summary of Likes/Comments
     const postsResponse = await fetch(
@@ -65,7 +65,7 @@ export async function syncFacebookData(channelId: number) {
     }
 
     // 2. Fetch Conversations/Messages
-    let fbConvs: Record<string, unknown>[] = [];
+    let fbConvs: any[] = [];
 
     const messagesResponse = await fetch(
       `${FB_GRAPH_URL}/me/conversations?fields=id,snippet,updated_time,participants,unread_count&access_token=${accessToken}`

@@ -1,26 +1,19 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-/**
- * Next.js 16: `middleware.ts` is deprecated in favor of `proxy.ts`.
- *
- * IMPORTANT: We intentionally do NOT hard-gate routes here.
- * Route access is handled by the app shell (`src/app/layout.tsx`), which shows
- * the login landing when no user exists.
- *
- * This prevents the `/meta` -> `/?redirect=/meta` loop that made the app look
- * like it was “doing nothing”.
- */
-export function proxy(_req: NextRequest) {
-  return NextResponse.next();
-}
+const isPublicRoute = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/webhooks(.*)",
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
-    // Skip internals + static assets
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
-
-
-

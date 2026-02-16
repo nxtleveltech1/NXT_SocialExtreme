@@ -3,9 +3,10 @@ import { db } from '@/db/db';
 import { channels, webhookEvents, channelDailyMetrics } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const channelId = parseInt(params.id);
+    const { id } = await params;
+    const channelId = parseInt(id);
 
     const channelData = await db.select().from(channels).where(eq(channels.id, channelId));
 
@@ -30,8 +31,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await request.json();
 
     const webhookEvent = await db

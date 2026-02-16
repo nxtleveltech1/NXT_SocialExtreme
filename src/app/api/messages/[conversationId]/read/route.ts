@@ -10,12 +10,13 @@ import { requireAuth } from "@/lib/api-auth";
  */
 export async function POST(
   req: Request,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   try {
     await requireAuth();
 
-    const conversationId = parseInt(params.conversationId);
+    const { conversationId: convId } = await params;
+    const conversationId = parseInt(convId);
 
     // Mark conversation as read
     await db

@@ -46,7 +46,7 @@ export default async function RootLayout({
 
   return (
     <ClerkProvider
-      proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL}
+      proxyUrl="https://extreme.nxtdotx.online/__clerk"
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/"

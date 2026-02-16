@@ -193,10 +193,10 @@ async function sendMessageToPlatform(message: any, platform: string) {
       .update(messages)
       .set({
         status: "sent",
-        platformMessageId: result.platformMessageId,
+        platformMessageId: result && "platformMessageId" in result ? result.platformMessageId : undefined,
       })
       .where(eq(messages.id, message.id));
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Mark as failed
     await db
       .update(messages)

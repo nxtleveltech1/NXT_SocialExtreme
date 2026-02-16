@@ -1,0 +1,86 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { StackProvider, StackTheme } from "@stackframe/stack";
+import Sidebar from "@/components/Sidebar";
+import AuthButton from "@/components/AuthButton";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { stackServerApp } from "../../stack";
+import { Toaster } from "sonner";
+import { QueryProvider } from "@/lib/providers/query-provider";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "MobileMate - Social Media Marketing",
+  description: "Manage your Facebook, Instagram, TikTok, and WhatsApp channels with ease.",
+};
+
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await stackServerApp.getUser();
+
+  return (
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}>
+        <QueryProvider>
+          <StackProvider app={stackServerApp}>
+            <StackTheme>
+              <Toaster position="top-right" richColors />
+            {user ? (
+              <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                
+                <div className="flex flex-col flex-1 w-full overflow-hidden">
+                  <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200">
+                    <div className="lg:hidden flex items-center">
+                      <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        MobileMate
+                      </span>
+                    </div>
+                    <div className="hidden lg:block">
+                      <h2 className="text-lg font-semibold text-gray-800">Welcome back, {user.displayName || user.primaryEmail}</h2>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <button className="p-2 text-gray-400 hover:text-gray-600">
+                        <span className="sr-only">Notifications</span>
+                        <div className="w-2 h-2 bg-red-500 rounded-full absolute translate-x-3 -translate-y-1 border-2 border-white" />
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                      </button>
+                      <Suspense fallback={<div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />}>
+                        <AuthButton />
+                      </Suspense>
+                    </div>
+                  </header>
+
+                  <main className="flex-1 overflow-y-auto p-6">
+                    <ErrorBoundary>
+                      {children}
+                    </ErrorBoundary>
+                  </main>
+                </div>
+              </div>
+            ) : (
+              <>{children}</>
+            )}
+          </StackTheme>
+        </StackProvider>
+        </QueryProvider>
+      </body>
+    </html>
+  );
+}

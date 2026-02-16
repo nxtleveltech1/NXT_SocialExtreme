@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "neon": {
+      "url": "https://mcp.neon.tech/mcp",
+      "headers": {napi_80f638o5dadb4coomjbhn9yz4b80l53ammzjs5dewbgtwlgv1q55ypbnjxf3nx28}
+    },
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${ctx7sk-1b4c8a65-d3e3-45f2-a769-55fe943a60dc}"
+      }
+    },
+    "clerk": {
+      "url": "http://localhost:3000/mcp",
+      "headers": {}
+    }
+  }
+}
+
+
+
+
+

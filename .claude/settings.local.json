@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run db:studio)",
+      "Bash(npm run dev)",
+      "Bash(bun --version)",
+      "Bash(bun install)",
+      "Bash(cat:*)",
+      "Bash(bun install:*)",
+      "Bash(bun run dev)",
+      "Bash(bun run --cwd my-app dev)",
+      "Bash(mkdir:*)",
+      "Bash(curl -s http://localhost:3001/api/monitoring/health)",
+      "Bash(bun run:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 10s npm run dev:*)",
+      "Bash(timeout 10s npm run build)",
+      "Bash(npm run db:push)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist)",
+      "Bash(powershell \"Stop-Process -Id 28056 -Force\")",
+      "Bash(bun x next dev)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:localhost)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

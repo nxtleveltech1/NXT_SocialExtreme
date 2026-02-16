@@ -207,23 +207,62 @@ export default function CreatePostPage() {
               </div>
             </div>
 
-            {/* Media Upload (Simulated) */}
+            {/* Media Upload */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Media Assets</label>
               <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => setMediaUrl("https://images.unsplash.com/photo-1598488035139-bdbb2231ce04")}
-                  className={`h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all ${
+                <label
+                  className={`h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all cursor-pointer ${
                     mediaUrl ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 hover:border-blue-400 text-gray-400 hover:text-blue-500'
                   }`}
                 >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      try {
+                        const res = await fetch("/api/media/upload", { method: "POST", body: formData });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Upload failed");
+                        setMediaUrl(data.url);
+                        toast.success("Image uploaded");
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : "Upload failed");
+                      }
+                    }}
+                  />
                   <ImageIcon size={24} />
-                  <span className="text-xs font-bold">Upload Image</span>
-                </button>
-                <button className="h-32 rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-400 text-gray-400 hover:text-blue-500 flex flex-col items-center justify-center gap-2 transition-all">
+                  <span className="text-xs font-bold">{mediaUrl ? "Replace Image" : "Upload Image"}</span>
+                </label>
+                <label className="h-32 rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-400 text-gray-400 hover:text-blue-500 flex flex-col items-center justify-center gap-2 transition-all cursor-pointer">
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      try {
+                        const res = await fetch("/api/media/upload", { method: "POST", body: formData });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Upload failed");
+                        setMediaUrl(data.url);
+                        toast.success("Video uploaded");
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : "Upload failed");
+                      }
+                    }}
+                  />
                   <Video size={24} />
                   <span className="text-xs font-bold">Upload Video</span>
-                </button>
+                </label>
               </div>
             </div>
 

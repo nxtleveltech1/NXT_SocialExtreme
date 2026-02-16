@@ -4,9 +4,11 @@ import { channels, ads, adSets, adCampaigns } from "@/db/schema";
 import { eq, InferSelectModel } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const searchParams = req.nextUrl.searchParams;
     const channelId = searchParams.get("channelId");
     const adAccountId = searchParams.get("adAccountId");
@@ -98,6 +100,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const {
       channelId,
@@ -164,6 +167,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const { adId, updates } = body;
 
@@ -241,6 +245,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const adId = searchParams.get("adId");
 

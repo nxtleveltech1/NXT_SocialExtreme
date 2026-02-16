@@ -138,42 +138,43 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Auto-update all Meta channels if no specific channelId
+    // Auto-update Meta channels matched by platformId if no specific channelId
     if (!channelId && pages.length > 0) {
-      const page = pages[0];
-      const pageToken = page.access_token;
-      const encrypted = encryptSecret(pageToken);
-      const ig = page.instagram_business_account;
+      for (const page of pages) {
+        const pageToken = page.access_token;
+        const encrypted = encryptSecret(pageToken);
+        const ig = page.instagram_business_account;
 
-      // Update Facebook channel (ID 1)
-      await db.update(channels)
-        .set({
-          accessToken: encrypted,
-          platformId: page.id,
-          isConnected: true,
-          connectedAt: new Date(),
-          tokenExpiresAt: null,
-          status: "Healthy",
-        })
-        .where(eq(channels.id, 1));
-
-      // Update Instagram channel (ID 2) if linked
-      if (ig) {
+        // Update Facebook channel matched by platformId (Meta Page ID)
         await db.update(channels)
           .set({
             accessToken: encrypted,
-            platformId: ig.id,
-            handle: `@${ig.username}`,
-            followers: ig.followers_count?.toString(),
+            platformId: page.id,
             isConnected: true,
             connectedAt: new Date(),
             tokenExpiresAt: null,
             status: "Healthy",
           })
-          .where(eq(channels.id, 2));
+          .where(eq(channels.platformId, page.id));
+
+        // Update Instagram channel matched by platformId (IG account ID) if linked
+        if (ig) {
+          await db.update(channels)
+            .set({
+              accessToken: encrypted,
+              platformId: ig.id,
+              handle: `@${ig.username}`,
+              followers: ig.followers_count?.toString(),
+              isConnected: true,
+              connectedAt: new Date(),
+              tokenExpiresAt: null,
+              status: "Healthy",
+            })
+            .where(eq(channels.platformId, ig.id));
+        }
       }
 
-      console.log("✅ Auto-updated all Meta channels");
+      console.log("Auto-updated Meta channels by platformId");
     }
 
     return NextResponse.json({

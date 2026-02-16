@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db/db"
 import { whatsappConversations, channels } from "@/db/schema"
 import { eq } from "drizzle-orm"
+import { requireAuth } from "@/lib/api-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url)
     const id = searchParams.get("id")
 

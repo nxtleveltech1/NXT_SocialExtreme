@@ -3,9 +3,11 @@ import { channels, orders as ordersTable, orderItems } from "@/db/schema";
 import { syncCommerceOrders } from "@/lib/integrations/meta-comprehensive";
 import { eq, desc, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const channelId = searchParams.get("channelId");
     const cmsId = searchParams.get("cmsId");

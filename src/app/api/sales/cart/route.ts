@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db/db"
 import { shoppingCarts, cartItems, salesProducts, whatsappConversations } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
+import { requireAuth } from "@/lib/api-auth"
 
 export const dynamic = "force-dynamic"
 
 // GET /api/sales/cart?conversationId=X - Get cart for a conversation
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url)
     const conversationId = searchParams.get("conversationId")
 
@@ -86,6 +88,7 @@ export async function GET(req: NextRequest) {
 // POST /api/sales/cart - Add item to cart
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json()
     const { conversationId, productId, quantity = 1 } = body
 
@@ -172,6 +175,7 @@ export async function POST(req: NextRequest) {
 // PATCH /api/sales/cart - Update item quantity
 export async function PATCH(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json()
     const { conversationId, productId, quantity } = body
 
@@ -214,6 +218,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/sales/cart - Remove item from cart
 export async function DELETE(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json()
     const { conversationId, productId } = body
 

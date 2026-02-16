@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const CreateCreativeSchema = z.object({
   channelId: z.number(),
@@ -29,6 +30,7 @@ const CreateCreativeSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const searchParams = req.nextUrl.searchParams;
     const channelId = searchParams.get("channelId");
     const adAccountId = searchParams.get("adAccountId");
@@ -97,6 +99,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const validated = CreateCreativeSchema.parse(body);
 

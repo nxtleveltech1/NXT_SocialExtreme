@@ -8,6 +8,7 @@ import {
   type ContentEngineConfig,
   type ContentTopic,
 } from "@/lib/agents/content-engine";
+import { requireAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ export const runtime = "nodejs";
  */
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get("mode") || "ideas";
     const topicId = searchParams.get("topic");
@@ -57,6 +59,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const { action, idea, topicId, platform, draftId, channelId, draft } = body;
 

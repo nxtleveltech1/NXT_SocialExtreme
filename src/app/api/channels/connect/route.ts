@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
 
     // Password-based “connections” are not compliant with Meta/TikTok platform policies.
     // Use official OAuth via /api/oauth/*.

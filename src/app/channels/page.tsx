@@ -78,13 +78,22 @@ export default function ChannelsPage() {
       const channelsArray = Array.isArray(data) ? data : data.channels || [];
 
       // Map data and calculate health based on real sync status
-      const enhancedData = channelsArray.map((c: any) => ({
-        ...c,
-        healthScore: c.status === 'Healthy' ? 100 : c.status === 'Error' ? 0 : 50,
-        pingLatency: c.isConnected ? Math.floor(Math.random() * 50) + 20 : 0, // Simulated ping for now
-        tokenExpiresIn: c.isConnected ? 'Valid' : 'Expired',
-        apiUsage: c.isConnected ? 12 : 0
-      }));
+      const enhancedData = channelsArray.map((c: any) => {
+        let pingLatency = 0;
+        if (c.isConnected && c.lastSync) {
+          const sinceSyncMs = Date.now() - new Date(c.lastSync).getTime();
+          pingLatency = Math.min(Math.round(sinceSyncMs / 60000), 999);
+        }
+        return {
+          ...c,
+          healthScore: c.status === 'Healthy' ? 100 : c.status === 'Error' ? 0 : 50,
+          pingLatency,
+          tokenExpiresIn: c.tokenExpiresAt
+            ? `${Math.max(0, Math.round((new Date(c.tokenExpiresAt).getTime() - Date.now()) / 86400000))}d`
+            : c.isConnected ? 'Permanent' : 'Expired',
+          apiUsage: c.isConnected ? 12 : 0,
+        };
+      });
 
       setChannels(enhancedData);
     } catch (error) {

@@ -3,9 +3,11 @@ import { syncProductCatalogs } from "@/lib/integrations/meta-comprehensive";
 import { db } from "@/db/db";
 import { productCatalogs, channels } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const searchParams = req.nextUrl.searchParams;
     const channelId = searchParams.get("channelId");
     const businessId = searchParams.get("businessId");
@@ -38,6 +40,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const { channelId, businessId, name, vertical } = body;
 

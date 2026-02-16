@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const CreateAudienceSchema = z.object({
   channelId: z.number(),
@@ -27,6 +28,7 @@ const CreateLookalikeSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     
     // Check if it's a lookalike audience

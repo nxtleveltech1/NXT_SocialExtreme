@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const BroadcastSchema = z.object({
   channelId: z.number(),
@@ -19,6 +20,7 @@ const BroadcastSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const validated = BroadcastSchema.parse(body);
 

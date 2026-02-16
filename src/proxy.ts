@@ -6,7 +6,14 @@ export default async function middleware(req: NextRequest) {
   const secretKey = process.env.CLERK_SECRET_KEY;
 
   if (!publishableKey || !secretKey) {
-    return NextResponse.next();
+    const isApiRoute = req.nextUrl.pathname.startsWith("/api/");
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: "Authentication service unavailable" },
+        { status: 503 }
+      );
+    }
+    return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
   try {
@@ -20,23 +27,26 @@ export default async function middleware(req: NextRequest) {
       "/sign-up(.*)",
       "/store(.*)",
       "/api/webhooks(.*)",
-      "/api/monitoring(.*)",
+      "/api/monitoring/health",
       "/api/oauth(.*)",
     ]);
 
     const handler = clerkMiddleware(async (auth, request) => {
       if (!isPublicRoute(request)) {
-        try {
-          await auth.protect();
-        } catch {
-          // Auth failed — let through
-        }
+        await auth.protect();
       }
     });
 
     return handler(req, {} as any);
   } catch {
-    return NextResponse.next();
+    const isApiRoute = req.nextUrl.pathname.startsWith("/api/");
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 }
 

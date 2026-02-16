@@ -5,6 +5,7 @@ import {
   DEFAULT_RULES,
   type OptimizationRule,
 } from "@/lib/agents/ad-optimizer";
+import { requireAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,7 @@ export const runtime = "nodejs";
  */
 export async function GET() {
   try {
+    await requireAuth();
     const summary = await getOptimizationSummary();
 
     return NextResponse.json({
@@ -35,6 +37,7 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json().catch(() => ({}));
     const customRules = body.rules as OptimizationRule[] | undefined;
 

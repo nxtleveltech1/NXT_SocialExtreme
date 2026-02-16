@@ -3,6 +3,7 @@ import { db } from '@/db/db';
 import { channels } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { requireAuth } from "@/lib/api-auth";
 
 // Authentication schema
 const AuthSchema = z.object({
@@ -11,71 +12,16 @@ const AuthSchema = z.object({
   password: z.string().min(1),
 });
 
-// Platform-specific login functions
-async function authenticateFacebook(username: string, password: string): Promise<{ success: boolean; accessToken?: string; error?: string }> {
-  try {
-    // Facebook login simulation - in real implementation, use Facebook SDK or API
-    console.log(`Attempting Facebook login for ${username}`);
-
-    // For demo purposes, simulate successful authentication
-    // In real implementation, you would:
-    // 1. Use Facebook's login flow or Graph API
-    // 2. Handle 2FA if required
-    // 3. Exchange credentials for access token
-
-    return {
-      success: true,
-      accessToken: `fb_access_token_${Date.now()}`, // Mock token
-    };
-  } catch (error: unknown) {
-    console.error('Facebook authentication error:', error);
-    return {
-      success: false,
-      error: 'Facebook authentication failed',
-    };
-  }
-}
-
-async function authenticateInstagram(username: string, password: string): Promise<{ success: boolean; accessToken?: string; error?: string }> {
-  try {
-    // Instagram login simulation
-    console.log(`Attempting Instagram login for ${username}`);
-
-    // Instagram typically uses Facebook OAuth, but some APIs support direct auth
-    return {
-      success: true,
-      accessToken: `ig_access_token_${Date.now()}`, // Mock token
-    };
-  } catch (error: unknown) {
-    console.error('Instagram authentication error:', error);
-    return {
-      success: false,
-      error: 'Instagram authentication failed',
-    };
-  }
-}
-
-async function authenticateTikTok(username: string, password: string): Promise<{ success: boolean; accessToken?: string; error?: string }> {
-  try {
-    // TikTok login simulation
-    console.log(`Attempting TikTok login for ${username}`);
-
-    // TikTok has complex authentication, typically requires OAuth flow
-    return {
-      success: true,
-      accessToken: `tt_access_token_${Date.now()}`, // Mock token
-    };
-  } catch (error: unknown) {
-    console.error('TikTok authentication error:', error);
-    return {
-      success: false,
-      error: 'TikTok authentication failed',
-    };
-  }
-}
+// Platform OAuth URLs for redirecting users to proper OAuth flows
+const PLATFORM_OAUTH_URLS: Record<string, string> = {
+  facebook: "/api/oauth/meta/start?platform=facebook",
+  instagram: "/api/oauth/meta/start?platform=instagram",
+  tiktok: "/api/oauth/tiktok/start",
+};
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth();
     const body = await request.json();
     const validatedData = AuthSchema.parse(body);
 
@@ -88,55 +34,24 @@ export async function POST(request: NextRequest) {
 
     const channel = channelData[0];
 
-    // Validate authentication type
-    if (channel.authType !== 'username_password') {
-      return NextResponse.json({ error: 'Channel not configured for username/password authentication' }, { status: 400 });
+    // Username/password auth is not supported for social platforms.
+    // All platforms require OAuth for secure token exchange.
+    const oauthUrl = PLATFORM_OAUTH_URLS[channel.platform.toLowerCase()];
+    if (!oauthUrl) {
+      return NextResponse.json(
+        { error: `Platform "${channel.platform}" does not support direct authentication. Use the OAuth flow.` },
+        { status: 400 }
+      );
     }
 
-    // Validate platform support
-    const supportedPlatforms = ['facebook', 'instagram', 'tiktok'];
-    if (!supportedPlatforms.includes(channel.platform)) {
-      return NextResponse.json({ error: 'Platform not supported for username/password authentication' }, { status: 400 });
-    }
-
-    // Authenticate based on platform
-    let authResult: { success: boolean; accessToken?: string; error?: string };
-    switch (channel.platform) {
-      case 'facebook':
-        authResult = await authenticateFacebook(validatedData.username, validatedData.password);
-        break;
-      case 'instagram':
-        authResult = await authenticateInstagram(validatedData.username, validatedData.password);
-        break;
-      case 'tiktok':
-        authResult = await authenticateTikTok(validatedData.username, validatedData.password);
-        break;
-      default:
-        return NextResponse.json({ error: 'Unsupported platform' }, { status: 400 });
-    }
-
-    if (authResult.success) {
-      // Update channel with authentication details
-      await db.update(channels)
-        .set({
-          isConnected: true,
-          accessToken: authResult.accessToken,
-          connectedAt: new Date(),
-          status: 'Connected',
-        })
-        .where(eq(channels.id, validatedData.channelId));
-
-      return NextResponse.json({
-        success: true,
-        message: `${channel.platform} authentication successful`,
-        accessToken: authResult.accessToken,
-      });
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: authResult.error || 'Authentication failed',
-      }, { status: 401 });
-    }
+    return NextResponse.json(
+      {
+        error: "Direct username/password authentication is not supported. Use the OAuth flow instead.",
+        oauthUrl,
+        platform: channel.platform,
+      },
+      { status: 400 }
+    );
   } catch (error: unknown) {
     console.error('Authentication error:', error);
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
@@ -145,6 +60,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(request.url);
     const channelId = searchParams.get('channelId');
 

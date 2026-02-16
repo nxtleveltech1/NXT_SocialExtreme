@@ -3,6 +3,7 @@ import { db } from "@/db/db";
 import { mediaAssets } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/api-auth";
 
 export const runtime = "edge";
 
@@ -17,6 +18,7 @@ export const runtime = "edge";
  */
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -97,6 +99,7 @@ export async function POST(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 

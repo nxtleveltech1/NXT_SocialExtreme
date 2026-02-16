@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/db';
-import { channels } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { channels, webhookEvents } from '@/db/schema';
+import { eq, sql, gte } from 'drizzle-orm';
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       metrics: {
         uptime: process.uptime(),
         responseTime,
-        errorRate: calculateErrorRate(),
+        errorRate: await calculateErrorRate(),
       },
     };
 
@@ -108,8 +108,20 @@ function determineOverallHealth(dbHealthy: boolean, channelStatus: { total: numb
   return 'unhealthy';
 }
 
-function calculateErrorRate(): number {
-  // This would typically track actual error rates from monitoring
-  // For now, return a mock value
-  return Math.random() * 5;
+async function calculateErrorRate(): Promise<number> {
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [result] = await db
+      .select({
+        total: sql<number>`count(*)`,
+        failed: sql<number>`count(*) filter (where ${webhookEvents.status} = 'failed')`,
+      })
+      .from(webhookEvents)
+      .where(gte(webhookEvents.receivedAt, oneDayAgo));
+
+    if (!result || result.total === 0) return 0;
+    return Number(((result.failed / result.total) * 100).toFixed(2));
+  } catch {
+    return 0;
+  }
 }

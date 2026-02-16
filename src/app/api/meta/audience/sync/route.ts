@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { withRateLimit } from "@/lib/middleware/rate-limiter";
 import { handleApiError } from "@/lib/utils/api-error-handler";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const BodySchema = z.object({
   channelId: z.number().int().positive(),
@@ -13,6 +14,7 @@ const BodySchema = z.object({
 
 export const POST = withRateLimit(async (req: Request) => {
   try {
+    await requireAuth();
     const body = BodySchema.parse(await req.json());
 
     const result = await syncCRMToMetaCustomAudience(

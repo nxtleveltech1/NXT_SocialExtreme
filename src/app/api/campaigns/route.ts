@@ -16,6 +16,7 @@ import {
   getCampaignDeliveryStats,
   syncWhatsAppTemplates,
 } from "@/lib/campaigns/broadcast-engine";
+import { requireAuth } from "@/lib/api-auth";
 
 // ---------------------------------------------------------------------------
 // GET — list campaigns or get single campaign with stats
@@ -23,6 +24,7 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const url = new URL(req.url);
     const campaignId = url.searchParams.get("id");
     const action = url.searchParams.get("action");
@@ -80,6 +82,7 @@ const SyncTemplatesSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const action = body?.action;
 

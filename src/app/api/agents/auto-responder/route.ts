@@ -10,6 +10,7 @@ import { sendMessage } from "@/lib/messaging/unified-inbox";
 import { db } from "@/db/db";
 import { conversations } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,7 @@ export const runtime = "nodejs";
  */
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const autoReply = searchParams.get("autoReply") === "true";
 
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const { conversationId, messageContent, sendReply, customResponse } = body;
 

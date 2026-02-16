@@ -4,6 +4,7 @@ import { channels } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { encryptSecret } from '@/lib/crypto';
+import { requireAuth } from "@/lib/api-auth";
 
 // Channel management types
 const ChannelSchema = z.object({
@@ -25,6 +26,7 @@ const MessageQueueSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    await requireAuth();
     const channelsData = await db.select().from(channels);
     return NextResponse.json({ channels: channelsData });
   } catch (error: unknown) {
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth();
     const body = await request.json();
     const validatedData = ChannelSchema.parse(body);
 
@@ -63,6 +66,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    await requireAuth();
     const body = await request.json();
     const { id, password, ...updateData } = body;
 
@@ -93,6 +97,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -111,6 +116,7 @@ export async function DELETE(request: NextRequest) {
 // Push message to channel
 export async function PATCH(request: NextRequest) {
   try {
+    await requireAuth();
     const body = await request.json();
     const validatedData = MessageQueueSchema.parse(body);
 

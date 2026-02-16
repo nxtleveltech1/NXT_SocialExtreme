@@ -3,6 +3,7 @@ import { trackConversionEvent } from "@/lib/integrations/meta-comprehensive";
 import { withRateLimit } from "@/lib/middleware/rate-limiter";
 import { handleApiError } from "@/lib/utils/api-error-handler";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const BodySchema = z.object({
   channelId: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]),
@@ -27,6 +28,7 @@ const BodySchema = z.object({
 
 export const POST = withRateLimit(async (req: Request) => {
   try {
+    await requireAuth();
     const body = BodySchema.parse(await req.json());
     const channelId = typeof body.channelId === "string" ? parseInt(body.channelId) : body.channelId;
 

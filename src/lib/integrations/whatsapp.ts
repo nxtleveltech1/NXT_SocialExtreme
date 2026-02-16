@@ -38,7 +38,6 @@ export interface WhatsAppConfig {
 
 export class WhatsAppIntegration {
   private config: WhatsAppConfig;
-  private messageQueue: Map<string, any[]> = new Map();
 
   constructor(config: WhatsAppConfig) {
     this.config = config;
@@ -104,42 +103,6 @@ export class WhatsAppIntegration {
       type,
       [type]: mediaData,
     });
-  }
-
-  async processWebhook(event: any): Promise<void> {
-    try {
-      console.log('Processing WhatsApp webhook:', event);
-
-      if (event.entry && event.entry[0]?.changes?.[0]?.value?.messages) {
-        const messages = event.entry[0].changes[0].value.messages;
-
-        for (const message of messages) {
-          await this.handleIncomingMessage(message);
-        }
-      }
-    } catch (error) {
-      console.error('Webhook processing error:', error);
-    }
-  }
-
-  private async handleIncomingMessage(message: any): Promise<void> {
-    // Store message in database
-    // Trigger appropriate responses based on message type
-    console.log('Handling incoming message:', message);
-  }
-
-  queueMessage(messageData: any): void {
-    const queueKey = `${messageData.to}_${Date.now()}`;
-    this.messageQueue.set(queueKey, [messageData]);
-  }
-
-  async processQueue(): Promise<void> {
-    for (const [key, messages] of this.messageQueue.entries()) {
-      for (const message of messages) {
-        await this.sendMessage(message);
-      }
-      this.messageQueue.delete(key);
-    }
   }
 
   verifyWebhook(token: string): boolean {

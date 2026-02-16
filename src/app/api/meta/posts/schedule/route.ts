@@ -3,6 +3,7 @@ import { db } from "@/db/db";
 import { channels, posts, publishJobs } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const SchedulePostSchema = z.object({
   channelId: z.number(),
@@ -14,6 +15,7 @@ const SchedulePostSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const validated = SchedulePostSchema.parse(body);
 
@@ -82,6 +84,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const channelId = searchParams.get("channelId");
 

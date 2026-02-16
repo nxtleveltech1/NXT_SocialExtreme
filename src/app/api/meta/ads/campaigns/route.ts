@@ -7,6 +7,7 @@ import { withRateLimit } from "@/lib/middleware/rate-limiter";
 import { handleApiError } from "@/lib/utils/api-error-handler";
 import { withCache, cacheKeys } from "@/lib/utils/cache";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const GetSchema = z.object({
   channelId: z.string().regex(/^\d+$/),
@@ -17,6 +18,7 @@ const GetSchema = z.object({
 
 export const GET = withRateLimit(async (req: Request) => {
   try {
+    await requireAuth();
     const url = new URL(req.url);
     const parsed = GetSchema.parse({
       channelId: url.searchParams.get("channelId") ?? undefined,
@@ -70,6 +72,7 @@ const PostSchema = z.object({
 
 export const POST = withRateLimit(async (req: Request) => {
   try {
+    await requireAuth();
     const body = PostSchema.parse(await req.json());
 
     // Use SDK by default

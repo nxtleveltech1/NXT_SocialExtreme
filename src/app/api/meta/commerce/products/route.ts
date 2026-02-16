@@ -5,9 +5,11 @@ import { products, productCatalogs, channels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const searchParams = req.nextUrl.searchParams;
     const catalogId = searchParams.get("catalogId");
 
@@ -39,6 +41,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const {
       catalogId,

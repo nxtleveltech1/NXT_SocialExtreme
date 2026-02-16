@@ -1,22 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendWhatsAppMessageComprehensive } from "@/lib/integrations/meta-comprehensive";
+import { requireAuth } from "@/lib/api-auth";
+import { z } from "zod";
+
+const BodySchema = z.object({
+  channelId: z.number(),
+  to: z.string(),
+  type: z.enum(["text", "template", "image", "video", "document"]).optional(),
+  message: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { channelId, to, message } = body;
+    await requireAuth();
+    
+    let body;
+    try {
+      body = BodySchema.parse(await req.json());
+    } catch (error) {
+      return NextResponse.json({ error: "Invalid request body", details: error }, { status: 400 });
+    }
 
-    if (!channelId || !to || !message) {
+    if (!body.message) {
       return NextResponse.json(
-        { error: "channelId, to, and message required" },
+        { error: "message required" },
         { status: 400 }
       );
     }
 
     const result = await sendWhatsAppMessageComprehensive(
-      parseInt(channelId),
-      to,
-      message
+      body.channelId,
+      body.to,
+      body.message
     );
 
     return NextResponse.json(result);

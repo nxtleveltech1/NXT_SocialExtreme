@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api-auth";
 
 const UpdateInventorySchema = z.object({
   channelId: z.number(),
@@ -17,6 +18,7 @@ const UpdateInventorySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json();
     const validated = UpdateInventorySchema.parse(body);
 

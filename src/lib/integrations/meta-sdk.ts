@@ -50,15 +50,6 @@ export class MetaBusinessSDK {
     return await account.read([AdAccount.Fields.name, AdAccount.Fields.account_id, AdAccount.Fields.currency]);
   }
 
-  /**
-   * List all ad accounts for a user
-   */
-  async getAdAccounts(userId: string = "me") {
-    // This would require a user access token
-    // For now, we'll use the ad account directly
-    throw new Error("Use getAdAccount with specific account ID");
-  }
-
   // ==================== CAMPAIGN OPERATIONS ====================
 
   /**

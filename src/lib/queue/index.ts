@@ -148,46 +148,6 @@ class DatabaseQueueProvider implements QueueProvider {
 }
 
 /**
- * Upstash QStash provider (stub for future implementation)
- */
-class QStashQueueProvider implements QueueProvider {
-  name = "qstash";
-
-  async enqueue<T>(queue: string, payload: T, options: EnqueueOptions = {}): Promise<string> {
-    // TODO: Implement QStash integration
-    // const client = new QStash({ token: process.env.QSTASH_TOKEN });
-    // const result = await client.publishJSON({
-    //   url: `${process.env.NEXT_PUBLIC_APP_URL}/api/jobs/${queue}`,
-    //   body: payload,
-    //   delay: options.runAt ? Math.floor((options.runAt.getTime() - Date.now()) / 1000) : undefined,
-    // });
-    // return result.messageId;
-    throw new Error("QStash provider not implemented. Set QUEUE_PROVIDER=database");
-  }
-
-  async dequeue(): Promise<Job[]> {
-    // QStash is push-based, not pull-based
-    return [];
-  }
-
-  async complete(jobId: string): Promise<void> {
-    // No-op for push-based queues
-  }
-
-  async fail(jobId: string, error: string): Promise<void> {
-    // QStash handles retries automatically
-  }
-
-  async retry(jobId: string, delayMs?: number): Promise<void> {
-    // QStash handles retries automatically
-  }
-
-  async cancel(jobId: string): Promise<void> {
-    // TODO: Implement QStash message cancellation
-  }
-}
-
-/**
  * Calculate exponential backoff delay
  */
 function getBackoffMs(attempt: number): number {
@@ -201,18 +161,9 @@ function getBackoffMs(attempt: number): number {
  * Get the configured queue provider
  */
 export function getQueueProvider(): QueueProvider {
-  const provider = process.env.QUEUE_PROVIDER || "database";
-
-  switch (provider) {
-    case "qstash":
-      return new QStashQueueProvider();
-    case "database":
-    default:
-      return new DatabaseQueueProvider();
-  }
+  return new DatabaseQueueProvider();
 }
 
-// Default export for convenience
 export const queue = getQueueProvider();
 
-export { DatabaseQueueProvider, QStashQueueProvider };
+export { DatabaseQueueProvider };

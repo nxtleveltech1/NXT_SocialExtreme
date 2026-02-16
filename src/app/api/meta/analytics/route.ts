@@ -5,9 +5,11 @@ import { channels, channelDailyMetrics, posts } from "@/db/schema";
 import { eq, desc, and, gte } from "drizzle-orm";
 import { MetaApiClient } from "@/lib/integrations/meta-client";
 import { decryptSecret } from "@/lib/crypto";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const searchParams = req.nextUrl.searchParams;
     const channelId = searchParams.get("channelId");
     const metric = searchParams.get("metric");

@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db/db';
 import { channels, webhookEvents, channelDailyMetrics } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await requireAuth();
     const { id } = await params;
     const channelId = parseInt(id);
 
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    await requireAuth();
     const { id } = await params;
     const body = await request.json();
 

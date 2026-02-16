@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { requireAuth } from "@/lib/api-auth";
 
 // Initialize OpenRouter client (OpenAI-compatible)
 const openrouter = new OpenAI({
@@ -13,18 +14,25 @@ const openrouter = new OpenAI({
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const { prompt, platform, tone } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
 
-    // Fallback if no API key
+    // Require API key in production — simulation only in development
     if (!process.env.OPENROUTER_API_KEY) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "AI service unavailable. OPENROUTER_API_KEY is not configured." },
+          { status: 503 }
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
       return NextResponse.json({
-        content: `[SIMULATION MODE - NO API KEY]\n\nExcited to share this with our ${platform} community! ${prompt}\n\n(To enable real AI, add OPENROUTER_API_KEY to .env.local)`,
-        hashtags: ["#Simulation", "#NXTSocialExtreme"],
+        content: `[DEV SIMULATION]\n\nExcited to share this with our ${platform} community! ${prompt}`,
+        hashtags: ["#DevMode", "#NXTSocialExtreme"],
         usage: { model: "simulator", tokens: 0 }
       });
     }

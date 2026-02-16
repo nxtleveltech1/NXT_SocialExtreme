@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/db";
 import { conversations, whatsappConversations, channels } from "@/db/schema";
 import { eq, desc, and, or } from "drizzle-orm";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url);
     const channelId = searchParams.get("channelId");
     const platform = searchParams.get("platform");

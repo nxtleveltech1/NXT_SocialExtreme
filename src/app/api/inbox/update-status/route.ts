@@ -2,25 +2,36 @@ import { db } from "@/db/db";
 import { conversations as conversationsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
+import { z } from "zod";
+
+const BodySchema = z.object({
+  conversationId: z.number(),
+  status: z.string().optional(),
+  priority: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
 
-    const { conversationId, status, priority, tags } = await req.json();
-
-    if (!conversationId) {
-      return NextResponse.json({ error: "Missing conversationId" }, { status: 400 });
+    let body;
+    try {
+      body = BodySchema.parse(await req.json());
+    } catch (error) {
+      return NextResponse.json({ error: "Invalid request body", details: error }, { status: 400 });
     }
 
     const updates: Partial<typeof conversationsTable.$inferInsert> = {};
-    if (status !== undefined) updates.status = status;
-    if (priority !== undefined) updates.priority = priority;
-    if (tags !== undefined) updates.tags = tags;
-    if (status === "replied" || status === "closed") updates.unread = false;
+    if (body.status !== undefined) updates.status = body.status;
+    if (body.priority !== undefined) updates.priority = body.priority;
+    if (body.tags !== undefined) updates.tags = body.tags;
+    if (body.status === "replied" || body.status === "closed") updates.unread = false;
 
-    await db.update(conversationsTable).set(updates).where(eq(conversationsTable.id, parseInt(conversationId)));
+    await db.update(conversationsTable).set(updates).where(eq(conversationsTable.id, body.conversationId));
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {

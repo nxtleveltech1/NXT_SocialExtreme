@@ -5,9 +5,11 @@ import { adInsights, ads, adSets, adCampaigns } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { withRateLimit } from "@/lib/middleware/rate-limiter";
 import { handleApiError } from "@/lib/utils/api-error-handler";
+import { requireAuth } from "@/lib/api-auth";
 
 export const GET = withRateLimit(async (req: Request) => {
   try {
+    await requireAuth();
     const url = new URL(req.url);
     const channelId = url.searchParams.get("channelId");
     const adAccountId = url.searchParams.get("adAccountId");

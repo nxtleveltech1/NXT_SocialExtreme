@@ -11,12 +11,14 @@ import {
 } from "@/db/schema"
 import { eq, and, InferSelectModel } from "drizzle-orm"
 import { sendWhatsAppMessageComprehensive } from "@/lib/integrations/meta-comprehensive"
+import { requireAuth } from "@/lib/api-auth"
 
 export const dynamic = "force-dynamic"
 
 // POST /api/sales/orders - Create order from cart and send via WhatsApp
 export async function POST(req: NextRequest) {
   try {
+    await requireAuth();
     const body = await req.json()
     const { conversationId, phoneNumber, channelId, cartItems: items } = body
 
@@ -179,6 +181,7 @@ export async function POST(req: NextRequest) {
 // GET /api/sales/orders - List orders
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const { searchParams } = new URL(req.url)
     const conversationId = searchParams.get("conversationId")
     const phoneNumber = searchParams.get("phoneNumber")

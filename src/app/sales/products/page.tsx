@@ -5,6 +5,10 @@ import { Plus, Edit, Trash2, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -22,6 +26,15 @@ interface Product {
 export default function ProductsManagementPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    price: "",
+    description: "",
+    category: "",
+    availability: "",
+  })
 
   useEffect(() => {
     fetchProducts()
@@ -46,6 +59,82 @@ export default function ProductsManagementPage() {
       style: 'currency',
       currency: 'ZAR',
     }).format(price / 100)
+  }
+
+  const handleDelete = async (productId: number) => {
+    const confirmed = window.confirm("Are you sure you want to delete this product? This action cannot be undone.")
+    if (!confirmed) return
+
+    try {
+      const response = await fetch("/api/sales/products", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: productId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to delete product")
+      }
+
+      setProducts(products.filter((p) => p.id !== productId))
+      toast.success("Product deleted successfully")
+    } catch (error) {
+      console.error("Error deleting product:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to delete product")
+    }
+  }
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product)
+    setEditFormData({
+      name: product.name,
+      price: (product.price / 100).toString(),
+      description: product.description || "",
+      category: product.category || "",
+      availability: product.availability || "in stock",
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingProduct) return
+
+    try {
+      const response = await fetch("/api/sales/products", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: editingProduct.id,
+          name: editFormData.name,
+          price: parseFloat(editFormData.price),
+          description: editFormData.description,
+          category: editFormData.category,
+          availability: editFormData.availability,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to update product")
+      }
+
+      const updatedProduct = await response.json()
+      setProducts(
+        products.map((p) => (p.id === editingProduct.id ? { ...updatedProduct, price: updatedProduct.price } : p))
+      )
+      setEditDialogOpen(false)
+      setEditingProduct(null)
+      toast.success("Product updated successfully")
+    } catch (error) {
+      console.error("Error updating product:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to update product")
+    }
   }
 
   if (loading) {
@@ -98,11 +187,21 @@ export default function ProductsManagementPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEdit(product)}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1 text-red-600 hover:text-red-700"
+                    onClick={() => handleDelete(product.id)}
+                  >
                     <Trash2 className="h-4 w-4 mr-1" />
                     Remove
                   </Button>
@@ -126,6 +225,70 @@ export default function ProductsManagementPage() {
           </Link>
         </Card>
       )}
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>Update the product information below.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-price">Price (ZAR)</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editFormData.price}
+                  onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Input
+                  id="edit-description"
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <Input
+                  id="edit-category"
+                  value={editFormData.category}
+                  onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-availability">Availability</Label>
+                <Input
+                  id="edit-availability"
+                  value={editFormData.availability}
+                  onChange={(e) => setEditFormData({ ...editFormData, availability: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

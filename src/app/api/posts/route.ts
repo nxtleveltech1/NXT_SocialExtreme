@@ -2,28 +2,35 @@ import { db } from "@/db/db";
 import { channels, posts, publishJobs } from "@/db/schema";
 import { desc, eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const status = url.searchParams.get("status");
-  const channelId = url.searchParams.get("channelId");
-  const limit = parseInt(url.searchParams.get("limit") || "100");
+  try {
+    await requireAuth();
+    const url = new URL(req.url);
+    const status = url.searchParams.get("status");
+    const channelId = url.searchParams.get("channelId");
+    const limit = parseInt(url.searchParams.get("limit") || "100");
 
-  const rows = await db
-    .select()
-    .from(posts)
-    .where(
-      and(
-        status ? eq(posts.status, status) : undefined,
-        channelId ? eq(posts.channelId, parseInt(channelId)) : undefined
+    const rows = await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          status ? eq(posts.status, status) : undefined,
+          channelId ? eq(posts.channelId, parseInt(channelId)) : undefined
+        )
       )
-    )
-    .orderBy(desc(posts.date))
-    .limit(limit);
+      .orderBy(desc(posts.date))
+      .limit(limit);
 
-  return NextResponse.json({ posts: rows });
+    return NextResponse.json({ posts: rows });
+  } catch (error: unknown) {
+    console.error("Error fetching posts:", error);
+    return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 });
+  }
 }
 
 type CreatePostBody = {
@@ -37,8 +44,9 @@ type CreatePostBody = {
 };
 
 export async function POST(req: NextRequest) {
-
-  const body = (await req.json()) as Partial<CreatePostBody>;
+  try {
+    await requireAuth();
+    const body = (await req.json()) as Partial<CreatePostBody>;
   const channelId = Number(body.channelId);
   if (!Number.isFinite(channelId)) {
     return NextResponse.json({ error: "Invalid channelId" }, { status: 400 });
@@ -73,17 +81,21 @@ export async function POST(req: NextRequest) {
     })
     .returning();
 
-  if (status === "scheduled") {
-    const runAt = scheduledAt ?? new Date(Date.now() + 5 * 60 * 1000);
-    await db.insert(publishJobs).values({
-      postId: created.id,
-      channelId,
-      runAt,
-      status: "pending",
-    });
-  }
+    if (status === "scheduled") {
+      const runAt = scheduledAt ?? new Date(Date.now() + 5 * 60 * 1000);
+      await db.insert(publishJobs).values({
+        postId: created.id,
+        channelId,
+        runAt,
+        status: "pending",
+      });
+    }
 
-  return NextResponse.json(created);
+    return NextResponse.json(created);
+  } catch (error: unknown) {
+    console.error("Error creating post:", error);
+    return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
+  }
 }
 
 

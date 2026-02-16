@@ -2,9 +2,11 @@ import { db } from "@/db/db";
 import { followers } from "@/db/schema";
 import { and, desc, eq, like } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');

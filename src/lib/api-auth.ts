@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stackServerApp } from "../../stack";
+import { stackServerApp } from "@/stack";
 
 /**
  * Require authentication for API routes using Stack Auth

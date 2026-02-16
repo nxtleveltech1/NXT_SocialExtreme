@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { stackServerApp } from "../../../../stack";
+import { stackServerApp } from "@/stack";
 
 export async function GET() {
   try {

@@ -13,7 +13,7 @@ import {
 
 import { db } from "@/db/db";
 import { channels as channelsTable } from "@/db/schema";
-import { stackServerApp } from "../../stack";
+import { stackServerApp } from "@/stack";
 import LoginLanding from "@/components/LoginLanding";
 
 export const dynamic = "force-dynamic";

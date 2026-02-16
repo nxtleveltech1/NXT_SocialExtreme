@@ -6,7 +6,7 @@ import { StackProvider, StackTheme } from "@stackframe/stack";
 import Sidebar from "@/components/Sidebar";
 import AuthButton from "@/components/AuthButton";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { stackServerApp } from "../../stack";
+import { stackServerApp } from "@/stack";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/lib/providers/query-provider";
 

@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "meta-whatsapp": {
+      "command": "npx",
+      "args": ["tsx", "mcp/meta-server.ts"],
+      "env": {
+        "WHATSAPP_CLOUD_API_ACCESS_TOKEN": "${WHATSAPP_CLOUD_API_ACCESS_TOKEN}",
+        "WHATSAPP_CLOUD_API_PHONE_NUMBER_ID": "${WHATSAPP_CLOUD_API_PHONE_NUMBER_ID}",
+        "WHATSAPP_ACCESS_TOKEN": "${WHATSAPP_ACCESS_TOKEN}",
+        "WHATSAPP_BUSINESS_ACCOUNT_ID": "${WHATSAPP_BUSINESS_ACCOUNT_ID}",
+        "META_AD_ACCOUNT_ID": "${META_AD_ACCOUNT_ID}",
+        "META_BUSINESS_ID": "${META_BUSINESS_ID}",
+        "META_ACCESS_TOKEN": "${META_ACCESS_TOKEN}"
+      }
+    }
+  }
+}

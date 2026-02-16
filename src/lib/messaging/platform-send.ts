@@ -4,8 +4,16 @@
  */
 
 import { db } from "@/db/db";
-import { messages, channels } from "@/db/schema";
+import {
+  messages,
+  channels,
+  conversations,
+  whatsappConversations,
+  whatsappMessages,
+} from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { MetaApiClient } from "@/lib/integrations/meta-client";
+import { decryptSecret } from "@/lib/crypto";
 
 /**
  * Send a message via the appropriate platform API
@@ -22,7 +30,6 @@ export async function sendMessageToPlatform(
     quickReplies?: any[];
   }
 ) {
-  // Get the channel for this conversation
   const [message] = await db
     .select()
     .from(messages)
@@ -43,7 +50,6 @@ export async function sendMessageToPlatform(
     throw new Error("Channel not connected");
   }
 
-  // Route to platform-specific send function
   switch (platform) {
     case "Facebook":
     case "Instagram":
@@ -57,84 +63,260 @@ export async function sendMessageToPlatform(
   }
 }
 
-/**
- * Send message via Meta Graph API (Facebook/Instagram)
- */
+// ---------------------------------------------------------------------------
+// Meta (Facebook / Instagram Messenger)
+// ---------------------------------------------------------------------------
+
 async function sendMetaMessage(
-  channel: any,
+  channel: typeof channels.$inferSelect,
   conversationId: number,
   content: string,
-  options?: any
+  options?: {
+    mediaUrl?: string;
+    messageType?: string;
+    attachments?: any[];
+    quickReplies?: any[];
+  }
 ) {
   if (!channel.accessToken) {
     throw new Error("Channel not connected - no access token");
   }
 
-  // TODO: Implement Meta Graph API call
-  // Example:
-  // const response = await fetch(
-  //   `https://graph.facebook.com/v19.0/${conversationId}/messages`,
-  //   {
-  //     method: "POST",
-  //     headers: {
-  //       Authorization: `Bearer ${channel.accessToken}`,
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify({
-  //       message: { text: content },
-  //     }),
-  //   }
-  // );
+  const accessToken = decryptSecret(channel.accessToken);
+  const client = new MetaApiClient(accessToken);
+  const pageId = channel.platformId || "me";
 
-  // For now, just mark as sent
-  return { success: true, platformMessageId: `meta_${Date.now()}` };
+  // Resolve the recipient from the conversation
+  const [conv] = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+  if (!conv) throw new Error("Conversation not found");
+
+  const recipientId = conv.participantId;
+  if (!recipientId) {
+    throw new Error("No participant ID on conversation — cannot send via Meta API");
+  }
+
+  // Send text or media
+  if (options?.mediaUrl && options.messageType !== "text") {
+    // Media message via Messenger Send API attachment
+    const response = await client.request<{ recipient_id: string; message_id: string }>(
+      `/${pageId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          message: {
+            attachment: {
+              type: options.messageType === "video" ? "video" : "image",
+              payload: { url: options.mediaUrl, is_reusable: true },
+            },
+          },
+        }),
+      }
+    );
+    return { success: true, platformMessageId: response.message_id };
+  }
+
+  // Quick replies
+  if (options?.quickReplies?.length) {
+    const response = await client.request<{ recipient_id: string; message_id: string }>(
+      `/${pageId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          message: {
+            text: content,
+            quick_replies: options.quickReplies.map((qr: any) => ({
+              content_type: "text",
+              title: qr.title || qr,
+              payload: qr.payload || qr.title || qr,
+            })),
+          },
+        }),
+      }
+    );
+    return { success: true, platformMessageId: response.message_id };
+  }
+
+  // Plain text
+  const response = await client.sendMessage(recipientId, content, pageId);
+  return { success: true, platformMessageId: response.message_id };
 }
 
-/**
- * Send message via WhatsApp (Twilio or Meta API)
- */
+// ---------------------------------------------------------------------------
+// WhatsApp (Meta Cloud API)
+// ---------------------------------------------------------------------------
+
 async function sendWhatsAppMessage(
-  channel: any,
+  channel: typeof channels.$inferSelect,
   conversationId: number,
   content: string,
-  options?: any
+  options?: {
+    mediaUrl?: string;
+    messageType?: string;
+    attachments?: any[];
+    quickReplies?: any[];
+  }
 ) {
-  // Check if using Twilio
-  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-    // TODO: Implement Twilio WhatsApp API
-    // const twilio = require('twilio');
-    // const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    // await client.messages.create({
-    //   from: process.env.TWILIO_WHATSAPP_FROM,
-    //   to: `whatsapp:${recipientPhone}`,
-    //   body: content,
-    // });
-    return { success: true, platformMessageId: `twilio_${Date.now()}` };
+  if (!channel.accessToken) {
+    throw new Error("WhatsApp channel not connected — no access token");
   }
 
-  // Check if using Meta WhatsApp Business API
-  if (channel.accessToken) {
-    // TODO: Implement Meta WhatsApp Business API
-    return { success: true, platformMessageId: `whatsapp_${Date.now()}` };
+  const accessToken = decryptSecret(channel.accessToken);
+  const client = new MetaApiClient(accessToken);
+  const phoneNumberId = channel.platformId;
+
+  if (!phoneNumberId) {
+    throw new Error("WhatsApp channel missing phone number ID (platformId)");
   }
 
-  throw new Error("WhatsApp not configured");
+  // Resolve recipient phone from whatsappConversations or unified conversations
+  let recipientPhone: string | null = null;
+
+  // Try WhatsApp-specific conversations first
+  const waConvs = await db
+    .select()
+    .from(whatsappConversations)
+    .where(eq(whatsappConversations.id, conversationId))
+    .limit(1);
+
+  if (waConvs.length && waConvs[0].phoneNumber) {
+    recipientPhone = waConvs[0].phoneNumber;
+  } else {
+    // Fall back to unified conversations
+    const [conv] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+
+    if (conv?.participantPhone) {
+      recipientPhone = conv.participantPhone;
+    }
+  }
+
+  if (!recipientPhone) {
+    throw new Error("Cannot resolve recipient phone number for WhatsApp message");
+  }
+
+  // Send media
+  if (options?.mediaUrl && options.messageType && options.messageType !== "text") {
+    const mediaType = options.messageType as "image" | "video" | "document" | "audio";
+    const result = await client.sendWhatsAppMedia(
+      phoneNumberId,
+      recipientPhone,
+      mediaType,
+      options.mediaUrl,
+      content || undefined
+    );
+    const messageId = result.messages?.[0]?.id;
+    await storeOutboundWhatsAppMessage(channel.id, conversationId, recipientPhone, content, messageId);
+    return { success: true, platformMessageId: messageId };
+  }
+
+  // Send interactive (quick replies as buttons)
+  if (options?.quickReplies?.length) {
+    const buttons = options.quickReplies.slice(0, 3).map((qr: any, i: number) => ({
+      type: "reply",
+      reply: {
+        id: `btn_${i}`,
+        title: (typeof qr === "string" ? qr : qr.title || qr.payload).slice(0, 20),
+      },
+    }));
+
+    const result = await client.sendWhatsAppInteractive(phoneNumberId, recipientPhone, {
+      type: "button",
+      body: { text: content },
+      action: { buttons },
+    });
+    const messageId = result.messages?.[0]?.id;
+    await storeOutboundWhatsAppMessage(channel.id, conversationId, recipientPhone, content, messageId);
+    return { success: true, platformMessageId: messageId };
+  }
+
+  // Plain text
+  const result = await client.sendWhatsAppMessage(phoneNumberId, recipientPhone, content);
+  const messageId = result.messages?.[0]?.id;
+  await storeOutboundWhatsAppMessage(channel.id, conversationId, recipientPhone, content, messageId);
+  return { success: true, platformMessageId: messageId };
 }
 
 /**
- * Send message via TikTok
+ * Store outbound WhatsApp message in both WA-specific and unified tables
  */
-async function sendTikTokMessage(
-  channel: any,
+async function storeOutboundWhatsAppMessage(
+  channelId: number,
   conversationId: number,
+  phone: string,
   content: string,
-  options?: any
+  platformMessageId?: string
+) {
+  // Find or create WhatsApp conversation
+  const waConvId = `wa_${phone}`;
+  let [waConv] = await db
+    .select()
+    .from(whatsappConversations)
+    .where(eq(whatsappConversations.platformConversationId, waConvId))
+    .limit(1);
+
+  if (!waConv) {
+    const [newConv] = await db
+      .insert(whatsappConversations)
+      .values({
+        channelId,
+        phoneNumber: phone,
+        platformConversationId: waConvId,
+        userName: phone,
+        lastMessage: content,
+        lastMessageTime: new Date(),
+        unread: false,
+        status: "open",
+      })
+      .returning();
+    waConv = newConv;
+  } else {
+    await db
+      .update(whatsappConversations)
+      .set({ lastMessage: content, lastMessageTime: new Date(), unread: false })
+      .where(eq(whatsappConversations.id, waConv.id));
+  }
+
+  // Store message
+  if (platformMessageId) {
+    await db.insert(whatsappMessages).values({
+      conversationId: waConv.id,
+      platformMessageId,
+      direction: "outbound",
+      messageType: "text",
+      content,
+      timestamp: new Date(),
+      status: "sent",
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TikTok (placeholder — TikTok DM API is restricted)
+// ---------------------------------------------------------------------------
+
+async function sendTikTokMessage(
+  channel: typeof channels.$inferSelect,
+  _conversationId: number,
+  _content: string,
+  _options?: any
 ) {
   if (!channel.accessToken) {
     throw new Error("Channel not connected - no access token");
   }
 
-  // TODO: Implement TikTok API
-  return { success: true, platformMessageId: `tiktok_${Date.now()}` };
+  // TikTok does not expose a public messaging API for businesses yet.
+  // The Send API is limited to verified partners.
+  throw new Error(
+    "TikTok messaging is not available via public API. Use TikTok's native inbox or apply for partner access."
+  );
 }
-

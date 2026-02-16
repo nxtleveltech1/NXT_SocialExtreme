@@ -128,6 +128,34 @@ export async function POST(req: NextRequest) {
       // 1. WhatsApp Business Account events
       if (object === "whatsapp_business_account") {
         for (const change of changes) {
+          // Handle delivery status updates
+          if (change.field === "messages" && change.value?.statuses) {
+            const statuses = Array.isArray(change.value.statuses) ? change.value.statuses : [change.value.statuses];
+            for (const statusUpdate of statuses) {
+              if (statusUpdate.id && statusUpdate.status) {
+                try {
+                  const { updateDeliveryStatus } = await import("@/lib/campaigns/broadcast-engine");
+                  const statusMap: Record<string, "sent" | "delivered" | "read" | "failed"> = {
+                    sent: "sent",
+                    delivered: "delivered",
+                    read: "read",
+                    failed: "failed",
+                  };
+                  const mappedStatus = statusMap[statusUpdate.status];
+                  if (mappedStatus) {
+                    await updateDeliveryStatus(
+                      statusUpdate.id,
+                      mappedStatus,
+                      statusUpdate.timestamp ? new Date(parseInt(statusUpdate.timestamp) * 1000) : undefined
+                    );
+                  }
+                } catch (err) {
+                  console.error("Delivery status update failed:", err);
+                }
+              }
+            }
+          }
+
           if (change.field === "messages" && change.value?.messages) {
             const messages = Array.isArray(change.value.messages) ? change.value.messages : [change.value.messages];
             for (const message of messages) {
@@ -181,6 +209,21 @@ export async function POST(req: NextRequest) {
                   status: "delivered",
                   metadata: message,
                 });
+
+                // AI follow-up: classify intent and auto-respond if applicable
+                if (message.text?.body) {
+                  try {
+                    const { processIncomingReply } = await import("@/lib/campaigns/ai-followup");
+                    await processIncomingReply(
+                      channel.id,
+                      conversation.id,
+                      message.text.body,
+                      phoneNumber
+                    );
+                  } catch (followUpErr) {
+                    console.error("AI follow-up failed:", followUpErr);
+                  }
+                }
               }
             }
           }

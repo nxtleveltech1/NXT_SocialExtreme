@@ -12,7 +12,7 @@ const BroadcastSchema = z.object({
   message: z.string().optional(),
   templateName: z.string().optional(),
   templateLanguage: z.string().optional(),
-  templateParams: z.record(z.any()).optional(),
+  templateParams: z.record(z.string(), z.any()).optional(),
   mediaUrl: z.string().url().optional(),
   mediaType: z.enum(["image", "video", "document", "audio"]).optional(),
 });
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }

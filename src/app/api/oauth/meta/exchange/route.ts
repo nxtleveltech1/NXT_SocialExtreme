@@ -74,7 +74,14 @@ export async function POST(req: NextRequest) {
     console.log(`✅ Found ${pages.length} page(s)`);
 
     // Process each page
-    const results = [];
+    const results: Array<{
+      pageId: string;
+      pageName: string;
+      hasInstagram: boolean;
+      instagramId?: string;
+      instagramUsername?: string;
+      instagramFollowers?: number;
+    }> = [];
     for (const page of pages) {
       const pageToken = page.access_token; // This is PERMANENT!
       const ig = page.instagram_business_account;

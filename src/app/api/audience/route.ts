@@ -1,6 +1,6 @@
 import { db } from "@/db/db";
 import { followers } from "@/db/schema";
-import { desc, eq, like } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -10,19 +10,17 @@ export async function GET(req: Request) {
     const search = searchParams.get('search');
     const segment = searchParams.get('segment');
 
-    let query = db.select().from(followers);
+    const data = await db
+      .select()
+      .from(followers)
+      .where(
+        and(
+          search ? like(followers.username, `%${search}%`) : undefined,
+          segment && segment !== 'All' ? eq(followers.segment, segment) : undefined
+        )
+      )
+      .orderBy(desc(followers.engagementScore));
 
-    if (search) {
-      // @ts-ignore
-      query = query.where(like(followers.username, `%${search}%`));
-    }
-
-    if (segment && segment !== 'All') {
-      // @ts-ignore
-      query = query.where(eq(followers.segment, segment));
-    }
-
-    const data = await query.orderBy(desc(followers.engagementScore));
     return NextResponse.json(data);
   } catch (error) {
     console.error("Follower Fetch Error:", error);

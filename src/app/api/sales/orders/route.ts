@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "phoneNumber is required" }, { status: 400 })
     }
 
-    let cart
-    let cartItemsData = []
+    let cart: { id: number; conversationId: number | null; status: string } | undefined
+    let cartItemsData: Array<Record<string, unknown>> = []
 
     if (conversationId) {
       // Get cart from conversation
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     )
 
     // Get conversation info if available
-    let conversation = null
+    let conversation: { id: number; userName: string | null } | null = null
     if (conversationId) {
       const [conv] = await db
         .select()
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
     message += "Awaiting confirmation and delivery information! 😊"
 
     // Send WhatsApp message if channelId is provided
-    let whatsappMessageId = null
+    let whatsappMessageId: string | null = null
     if (channelId) {
       try {
         const result = await sendWhatsAppMessageComprehensive(

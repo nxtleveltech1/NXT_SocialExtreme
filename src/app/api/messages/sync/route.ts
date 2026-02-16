@@ -32,11 +32,17 @@ export async function POST(req: Request) {
         )
       );
 
-    const syncResults = [];
+    const syncResults: Array<{
+      channelId: number;
+      platform: string;
+      channelName: string;
+      synced?: number;
+      errors?: string[];
+    }> = [];
 
     for (const channel of connectedChannels) {
       try {
-        let syncResult;
+        let syncResult: { synced: number; errors?: string[] } | undefined;
         
         switch (channel.platform) {
           case "Facebook":

@@ -19,10 +19,10 @@ type Candidate =
 export default async function MetaSelectPage({
   searchParams,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-
-  const channelIdRaw = searchParams.channelId;
+  const resolvedParams = await searchParams;
+  const channelIdRaw = resolvedParams.channelId;
   const channelId = Number(Array.isArray(channelIdRaw) ? channelIdRaw[0] : channelIdRaw);
   if (!Number.isFinite(channelId)) notFound();
 

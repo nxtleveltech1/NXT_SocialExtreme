@@ -49,7 +49,7 @@ export const CreateAdSetSchema = z.object({
   billingEvent: z.string().min(1),
   dailyBudget: z.number().int().positive().optional(),
   lifetimeBudget: z.number().int().positive().optional(),
-  targeting: z.record(z.any()).optional(),
+  targeting: z.record(z.string(), z.any()).optional(),
   status: z.enum(["ACTIVE", "PAUSED"]).optional(),
   startTime: z.string().datetime().optional(),
   stopTime: z.string().datetime().optional(),
@@ -60,9 +60,9 @@ export const CreateAdSchema = z.object({
   adAccountId: AdAccountIdSchema,
   adSetId: AdSetIdSchema,
   name: z.string().min(1).max(256),
-  creative: z.record(z.any()),
+  creative: z.record(z.string(), z.any()),
   status: z.enum(["ACTIVE", "PAUSED"]).optional(),
-  trackingSpecs: z.array(z.record(z.any())).optional(),
+  trackingSpecs: z.array(z.record(z.string(), z.any())).optional(),
 });
 
 export const CreateAudienceSchema = z.object({
@@ -93,7 +93,7 @@ export const BroadcastMessageSchema = z.object({
   message: z.string().optional(),
   templateName: z.string().optional(),
   templateLanguage: z.string().optional(),
-  templateParams: z.record(z.any()).optional(),
+  templateParams: z.record(z.string(), z.any()).optional(),
   mediaUrl: UrlSchema.optional(),
   mediaType: z.enum(["image", "video", "document", "audio"]).optional(),
 });
@@ -104,7 +104,7 @@ export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): T {
   } catch (error) {
     if (error instanceof z.ZodError) {
       throw new Error(
-        `Validation error: ${error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`
+        `Validation error: ${error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`
       );
     }
     throw error;

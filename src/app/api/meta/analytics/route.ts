@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const channelId = searchParams.get("channelId");
     const metric = searchParams.get("metric");
-    const period = (searchParams.get("period") || "day") as "day" | "week" | "days_28" | "lifetime";
+    const period = (searchParams.get("period") || "day") as "day" | "week" | "days_28";
     const daysBack = parseInt(searchParams.get("daysBack") || "7");
     const sync = searchParams.get("sync") === "true";
 

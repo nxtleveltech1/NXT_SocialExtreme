@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button"
 
 export const dynamic = "force-dynamic"
 
-export default function WhatsAppSalesPage({
+export default async function WhatsAppSalesPage({
   searchParams,
 }: {
-  searchParams: { conversationId?: string }
+  searchParams: Promise<{ conversationId?: string }>
 }) {
-  const conversationId = searchParams.conversationId
+  const { conversationId } = await searchParams
 
   return (
     <div className="space-y-6">

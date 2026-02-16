@@ -20,7 +20,7 @@ function requireEnv(name: string): NonEmptyString {
 export const env = {
   // Core
   NODE_ENV: (process.env.NODE_ENV ?? "development") as "development" | "test" | "production",
-  DATABASE_URL: requireEnv("DATABASE_URL"),
+  DATABASE_URL: getEnv("DATABASE_URL"),
 
   // Security — optional at startup; required only when encrypting tokens
   TOKEN_ENCRYPTION_KEY: getEnv("TOKEN_ENCRYPTION_KEY"),

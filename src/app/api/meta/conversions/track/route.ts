@@ -39,7 +39,7 @@ export const POST = withRateLimit(async (req: Request) => {
     );
 
     return NextResponse.json(result);
-  } catch (error) {
+  } catch (error: unknown) {
     const { error: message, status } = handleApiError(error);
     return NextResponse.json({ error: message }, { status });
   }

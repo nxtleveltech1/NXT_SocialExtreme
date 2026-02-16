@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         quantity: item.quantity,
       })),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching cart:", error)
     return NextResponse.json({ error: "Failed to fetch cart" }, { status: 500 })
   }
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error adding to cart:", error)
     return NextResponse.json({ error: "Failed to add to cart" }, { status: 500 })
   }
@@ -205,7 +205,7 @@ export async function PATCH(req: NextRequest) {
       .where(and(eq(cartItems.cartId, cart.id), eq(cartItems.productId, productId)))
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating cart:", error)
     return NextResponse.json({ error: "Failed to update cart" }, { status: 500 })
   }
@@ -243,7 +243,7 @@ export async function DELETE(req: NextRequest) {
       .where(and(eq(cartItems.cartId, cart.id), eq(cartItems.productId, productId)))
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error removing from cart:", error)
     return NextResponse.json({ error: "Failed to remove from cart" }, { status: 500 })
   }

@@ -20,7 +20,6 @@ import {
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { withRetry } from "@/lib/utils/api-error-handler";
-import { useApiError } from "@/lib/hooks/useApiError";
 import { formatErrorForToast } from "@/lib/utils/error-messages";
 import ConnectionModal from "@/components/channels/ConnectionModal";
 import ChannelSettingsModal from "@/components/channels/ChannelSettingsModal";

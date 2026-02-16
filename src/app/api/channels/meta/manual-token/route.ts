@@ -2,7 +2,7 @@ import { db } from "@/db/db";
 import { channels } from "@/db/schema";
 import { encryptSecret } from "@/lib/crypto";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -30,10 +30,10 @@ async function validateFacebookToken(token: string): Promise<{ valid: boolean; u
       userId: data.id,
       name: data.name,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       valid: false,
-      error: err?.message ?? "Token validation failed",
+      error: err instanceof Error ? err.message : "Token validation failed",
     };
   }
 }
@@ -60,7 +60,7 @@ async function fetchUserPages(token: string): Promise<Array<{ id: string; name: 
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { channelId, accessToken } = body;
@@ -154,10 +154,11 @@ export async function POST(req: Request) {
       pageName,
       pages: pages.length > 0 ? pages : undefined,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to connect with manual token";
     console.error("Manual token connection error:", err);
     return NextResponse.json(
-      { error: err?.message ?? "Failed to connect with manual token" },
+      { error: message },
       { status: 500 }
     );
   }

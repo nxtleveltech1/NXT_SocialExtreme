@@ -1,7 +1,7 @@
 import { put, del } from "@vercel/blob";
 import { db } from "@/db/db";
 import { mediaAssets } from "@/db/schema";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
 export const runtime = "edge";
@@ -15,7 +15,7 @@ export const runtime = "edge";
  * 
  * Response: { url, pathname, contentType, size }
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       contentType: file.type,
       size: file.size,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Media upload error:", error);
     return NextResponse.json(
       { error: "Failed to upload media" },
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
  * 
  * DELETE /api/media/upload?id={assetId}
  */
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -121,7 +121,7 @@ export async function DELETE(req: Request) {
     await db.delete(mediaAssets).where(eq(mediaAssets.id, Number(id)));
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Media delete error:", error);
     return NextResponse.json(
       { error: "Failed to delete media" },

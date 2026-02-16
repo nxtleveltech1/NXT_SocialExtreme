@@ -4,7 +4,7 @@ import { encryptSecret } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import { verifyOAuthState } from "@/lib/oauth/state";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -63,7 +63,7 @@ async function fetchUserAccounts(userAccessToken: string): Promise<MetaAccountsR
   return data as MetaAccountsResponse;
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     requireMetaEnv();
 
@@ -152,9 +152,10 @@ export async function GET(req: Request) {
     const redirectUrl = new URL("/oauth/meta/select", url.origin);
     redirectUrl.searchParams.set("channelId", String(payload.channelId));
     return NextResponse.redirect(redirectUrl.toString());
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Meta OAuth callback failed";
     console.error("Meta OAuth callback error:", err);
-    return NextResponse.json({ error: err?.message ?? "Meta OAuth callback failed" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

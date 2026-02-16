@@ -78,10 +78,11 @@ export async function GET(req: NextRequest) {
       conversations: allConversations.slice(0, limit),
       total: allConversations.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch conversations";
     console.error("Error fetching conversations:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch conversations" },
+      { error: message },
       { status: 500 }
     );
   }

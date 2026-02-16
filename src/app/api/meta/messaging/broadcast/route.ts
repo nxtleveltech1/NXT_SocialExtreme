@@ -78,8 +78,8 @@ export async function POST(req: NextRequest) {
         } else {
           errors.push({ recipient, error: "No message content provided" });
         }
-      } catch (error: any) {
-        errors.push({ recipient, error: error.message });
+      } catch (error: unknown) {
+        errors.push({ recipient, error: error instanceof Error ? error.message : "Unknown error" });
       }
     }
 
@@ -90,16 +90,17 @@ export async function POST(req: NextRequest) {
       results,
       errors: errors.length > 0 ? errors : undefined,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }
+    const message = error instanceof Error ? error.message : "Failed to send broadcast";
     console.error("Error sending broadcast:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to send broadcast" },
+      { error: message },
       { status: 500 }
     );
   }

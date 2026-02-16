@@ -3,7 +3,7 @@ import { channels } from "@/db/schema";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -33,7 +33,7 @@ type FinalizeBody =
   | { channelId: number; type: "facebook_page"; pageId: string }
   | { channelId: number; type: "instagram_business"; pageId: string; igId: string };
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     requireMetaEnv();
 
@@ -99,9 +99,10 @@ export async function POST(req: Request) {
       .where(eq(channels.id, channelId));
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Meta OAuth finalize failed";
     console.error("Meta OAuth finalize error:", err);
-    return NextResponse.json({ error: err?.message ?? "Meta OAuth finalize failed" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
           profileViews: igInsights.data.find((d: any) => d.name === "profile_views")?.values?.[0]?.value || 0,
           followerCount: igInsights.data.find((d: any) => d.name === "follower_count")?.values?.[0]?.value || 0,
         };
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error fetching Instagram insights:", error);
       }
     }
@@ -130,10 +130,11 @@ export async function GET(req: NextRequest) {
         impressions: p.impressions,
       })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch analytics";
     console.error("Error fetching analytics:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch analytics" },
+      { error: message },
       { status: 500 }
     );
   }

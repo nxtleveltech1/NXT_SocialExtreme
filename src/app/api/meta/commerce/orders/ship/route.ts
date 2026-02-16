@@ -37,16 +37,17 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }
+    const message = error instanceof Error ? error.message : "Failed to ship order";
     console.error("Error shipping order:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to ship order" },
+      { error: message },
       { status: 500 }
     );
   }

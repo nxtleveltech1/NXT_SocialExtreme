@@ -1,7 +1,6 @@
 import { 
   BarChart3, 
   TrendingUp, 
-  Users, 
   Target,
   ArrowUpRight,
   ArrowDownRight,
@@ -12,8 +11,12 @@ import {
 } from "lucide-react";
 
 import { db } from "@/db/db";
-import { channels as channelsTable, posts as postsTable } from "@/db/schema";
-import { sql, gte, desc, InferSelectModel } from "drizzle-orm";
+import {
+  channels as channelsTable,
+  posts as postsTable,
+  conversations as conversationsTable,
+} from "@/db/schema";
+import { sql, gte, lt, and, InferSelectModel } from "drizzle-orm";
 
 type Channel = InferSelectModel<typeof channelsTable>;
 
@@ -26,26 +29,84 @@ const platformIcons = {
   WhatsApp: { icon: MessageSquare, color: 'text-green-600' },
 };
 
+function calcPercentChange(
+  current: number,
+  previous: number
+): { change: string; trend: "up" | "down" } {
+  if (previous === 0) {
+    return {
+      change: current > 0 ? "+100%" : "0%",
+      trend: current > 0 ? "up" : "down",
+    };
+  }
+  const pct = ((current - previous) / previous) * 100;
+  return {
+    change: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`,
+    trend: pct >= 0 ? "up" : "down",
+  };
+}
+
+function formatNumber(val: number): string {
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+  if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
+  return String(val);
+}
+
 export default async function AnalyticsPage() {
   let channels: Channel[] = [];
-  let totalImpressions = [{ sum: 0 }];
-  let totalEngagement = [{ likes: 0, comments: 0, shares: 0, reach: 0 }];
-  let totalPosts = [{ count: 0 }];
-  
+
+  // Current-period aggregates
+  let currentImpressions = 0;
+  let currentEngagement = { likes: 0, comments: 0, shares: 0, reach: 0 };
+  let currentPostsCount = 0;
+
+  // Previous-period aggregates (for trend comparison)
+  let prevImpressions = 0;
+  let prevEngagement = { likes: 0, comments: 0, shares: 0, reach: 0 };
+  let prevPostsCount = 0;
+
+  // Per-channel breakdowns
+  let channelPostStats: {
+    channelId: number | null;
+    platform: string;
+    likes: number;
+    comments: number;
+    shares: number;
+    reach: number;
+    impressions: number;
+  }[] = [];
+  let prevChannelPostStats: typeof channelPostStats = [];
+  let channelLeadCounts: { channelId: number | null; count: number }[] = [];
+
+  // Weekly chart data
+  let weeklyData: { week: string; impressions: number }[] = [];
+
   try {
-    channels = await db.select().from(channelsTable);
-    
-    // Calculate real KPIs from database
+    const now = new Date();
     const days = 30;
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
 
-    totalImpressions = await db
-      .select({ sum: sql<number>`coalesce(sum(${postsTable.impressions}), 0)` })
+    // Current period: last 30 days
+    const currentStart = new Date(now);
+    currentStart.setDate(currentStart.getDate() - days);
+
+    // Previous period: 31–60 days ago
+    const prevStart = new Date(now);
+    prevStart.setDate(prevStart.getDate() - days * 2);
+    const prevEnd = new Date(now);
+    prevEnd.setDate(prevEnd.getDate() - days);
+
+    channels = await db.select().from(channelsTable);
+
+    // ── Current period ────────────────────────────────────────────────
+    const [currImpRow] = await db
+      .select({
+        sum: sql<number>`coalesce(sum(${postsTable.impressions}), 0)`,
+      })
       .from(postsTable)
-      .where(gte(postsTable.date, startDate));
+      .where(gte(postsTable.date, currentStart));
+    currentImpressions = Number(currImpRow?.sum ?? 0);
 
-    totalEngagement = await db
+    const [currEngRow] = await db
       .select({
         likes: sql<number>`coalesce(sum(${postsTable.likes}), 0)`,
         comments: sql<number>`coalesce(sum(${postsTable.comments}), 0)`,
@@ -53,75 +114,241 @@ export default async function AnalyticsPage() {
         reach: sql<number>`coalesce(sum(${postsTable.reach}), 0)`,
       })
       .from(postsTable)
-      .where(gte(postsTable.date, startDate));
+      .where(gte(postsTable.date, currentStart));
+    currentEngagement = {
+      likes: Number(currEngRow?.likes ?? 0),
+      comments: Number(currEngRow?.comments ?? 0),
+      shares: Number(currEngRow?.shares ?? 0),
+      reach: Number(currEngRow?.reach ?? 0),
+    };
 
-    totalPosts = await db
+    const [currPostsRow] = await db
       .select({ count: sql<number>`count(*)` })
       .from(postsTable)
-      .where(gte(postsTable.date, startDate));
-  } catch (error: any) {
-    // Silently handle database errors - tables may not exist yet
-    // This is expected if migrations haven't been run
-    if (process.env.NODE_ENV === 'development') {
-      console.warn("Database not initialized. Run 'bun run db:push' to create tables.");
+      .where(gte(postsTable.date, currentStart));
+    currentPostsCount = Number(currPostsRow?.count ?? 0);
+
+    // ── Previous period ───────────────────────────────────────────────
+    const [prevImpRow] = await db
+      .select({
+        sum: sql<number>`coalesce(sum(${postsTable.impressions}), 0)`,
+      })
+      .from(postsTable)
+      .where(and(gte(postsTable.date, prevStart), lt(postsTable.date, prevEnd)));
+    prevImpressions = Number(prevImpRow?.sum ?? 0);
+
+    const [prevEngRow] = await db
+      .select({
+        likes: sql<number>`coalesce(sum(${postsTable.likes}), 0)`,
+        comments: sql<number>`coalesce(sum(${postsTable.comments}), 0)`,
+        shares: sql<number>`coalesce(sum(${postsTable.shares}), 0)`,
+        reach: sql<number>`coalesce(sum(${postsTable.reach}), 0)`,
+      })
+      .from(postsTable)
+      .where(and(gte(postsTable.date, prevStart), lt(postsTable.date, prevEnd)));
+    prevEngagement = {
+      likes: Number(prevEngRow?.likes ?? 0),
+      comments: Number(prevEngRow?.comments ?? 0),
+      shares: Number(prevEngRow?.shares ?? 0),
+      reach: Number(prevEngRow?.reach ?? 0),
+    };
+
+    const [prevPostsRow] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(postsTable)
+      .where(and(gte(postsTable.date, prevStart), lt(postsTable.date, prevEnd)));
+    prevPostsCount = Number(prevPostsRow?.count ?? 0);
+
+    // ── Per-channel post stats (current) ──────────────────────────────
+    channelPostStats = (
+      await db
+        .select({
+          channelId: postsTable.channelId,
+          platform: postsTable.platform,
+          likes: sql<number>`coalesce(sum(${postsTable.likes}), 0)`,
+          comments: sql<number>`coalesce(sum(${postsTable.comments}), 0)`,
+          shares: sql<number>`coalesce(sum(${postsTable.shares}), 0)`,
+          reach: sql<number>`coalesce(sum(${postsTable.reach}), 0)`,
+          impressions: sql<number>`coalesce(sum(${postsTable.impressions}), 0)`,
+        })
+        .from(postsTable)
+        .where(gte(postsTable.date, currentStart))
+        .groupBy(postsTable.channelId, postsTable.platform)
+    ).map((r) => ({
+      channelId: r.channelId,
+      platform: r.platform,
+      likes: Number(r.likes),
+      comments: Number(r.comments),
+      shares: Number(r.shares),
+      reach: Number(r.reach),
+      impressions: Number(r.impressions),
+    }));
+
+    // ── Per-channel post stats (previous) ─────────────────────────────
+    prevChannelPostStats = (
+      await db
+        .select({
+          channelId: postsTable.channelId,
+          platform: postsTable.platform,
+          likes: sql<number>`coalesce(sum(${postsTable.likes}), 0)`,
+          comments: sql<number>`coalesce(sum(${postsTable.comments}), 0)`,
+          shares: sql<number>`coalesce(sum(${postsTable.shares}), 0)`,
+          reach: sql<number>`coalesce(sum(${postsTable.reach}), 0)`,
+          impressions: sql<number>`coalesce(sum(${postsTable.impressions}), 0)`,
+        })
+        .from(postsTable)
+        .where(and(gte(postsTable.date, prevStart), lt(postsTable.date, prevEnd)))
+        .groupBy(postsTable.channelId, postsTable.platform)
+    ).map((r) => ({
+      channelId: r.channelId,
+      platform: r.platform,
+      likes: Number(r.likes),
+      comments: Number(r.comments),
+      shares: Number(r.shares),
+      reach: Number(r.reach),
+      impressions: Number(r.impressions),
+    }));
+
+    // ── Leads per channel (conversation count) ────────────────────────
+    channelLeadCounts = (
+      await db
+        .select({
+          channelId: conversationsTable.channelId,
+          count: sql<number>`count(*)`,
+        })
+        .from(conversationsTable)
+        .groupBy(conversationsTable.channelId)
+    ).map((r) => ({ channelId: r.channelId, count: Number(r.count) }));
+
+    // ── Weekly impressions for growth chart (last 12 weeks) ───────────
+    const twelveWeeksAgo = new Date(now);
+    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+
+    weeklyData = (
+      await db
+        .select({
+          week: sql<string>`to_char(date_trunc('week', ${postsTable.date}), 'YYYY-MM-DD')`,
+          impressions: sql<number>`coalesce(sum(${postsTable.impressions}), 0)`,
+        })
+        .from(postsTable)
+        .where(gte(postsTable.date, twelveWeeksAgo))
+        .groupBy(sql`date_trunc('week', ${postsTable.date})`)
+        .orderBy(sql`date_trunc('week', ${postsTable.date})`)
+    ).map((r) => ({ week: r.week, impressions: Number(r.impressions) }));
+  } catch (error: unknown) {
+    if (process.env.NODE_ENV === "development") {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn("Analytics DB error:", msg);
     }
-    // Use default values if database query fails
   }
 
+  // ── Compute KPIs with real period-over-period trends ──────────────
+  const currTotalEng =
+    currentEngagement.likes +
+    currentEngagement.comments +
+    currentEngagement.shares;
+  const prevTotalEng =
+    prevEngagement.likes + prevEngagement.comments + prevEngagement.shares;
+
   const engagementRate =
-    totalEngagement[0]?.reach > 0
-      ? ((totalEngagement[0]?.likes + totalEngagement[0]?.comments + totalEngagement[0]?.shares) /
-          totalEngagement[0]?.reach) *
-        100
+    currentEngagement.reach > 0
+      ? (currTotalEng / currentEngagement.reach) * 100
+      : 0;
+  const prevEngagementRate =
+    prevEngagement.reach > 0
+      ? (prevTotalEng / prevEngagement.reach) * 100
       : 0;
 
-  const impressions = totalImpressions[0]?.sum || 0;
+  const engRateDelta = engagementRate - prevEngagementRate;
+
+  const impressionsTrend = calcPercentChange(currentImpressions, prevImpressions);
+  const engRateTrend = {
+    change: `${engRateDelta >= 0 ? "+" : ""}${engRateDelta.toFixed(1)}%`,
+    trend: (engRateDelta >= 0 ? "up" : "down") as "up" | "down",
+  };
+  const postsDiff = currentPostsCount - prevPostsCount;
+  const postsTrend = {
+    change: `${postsDiff >= 0 ? "+" : ""}${postsDiff}`,
+    trend: (postsDiff >= 0 ? "up" : "down") as "up" | "down",
+  };
+  const totalEngTrend = calcPercentChange(currTotalEng, prevTotalEng);
+
   const kpis = [
-    { 
-      name: 'Total Impressions', 
-      value: impressions >= 1000000 
-        ? `${(impressions / 1000000).toFixed(1)}M` 
-        : impressions >= 1000 
-        ? `${(impressions / 1000).toFixed(1)}K` 
-        : String(impressions), 
-      change: '+12.5%', 
-      trend: 'up' as const 
+    {
+      name: "Total Impressions",
+      value: formatNumber(currentImpressions),
+      change: impressionsTrend.change,
+      trend: impressionsTrend.trend,
     },
-    { 
-      name: 'Engagement Rate', 
-      value: `${engagementRate.toFixed(1)}%`, 
-      change: '+0.4%', 
-      trend: 'up' as const 
+    {
+      name: "Engagement Rate",
+      value: `${engagementRate.toFixed(1)}%`,
+      change: engRateTrend.change,
+      trend: engRateTrend.trend,
     },
-    { 
-      name: 'Total Posts', 
-      value: String(totalPosts[0]?.count || 0), 
-      change: '+5', 
-      trend: 'up' as const 
+    {
+      name: "Total Posts",
+      value: String(currentPostsCount),
+      change: postsTrend.change,
+      trend: postsTrend.trend,
     },
-    { 
-      name: 'Total Engagement', 
-      value: String(
-        (totalEngagement[0]?.likes || 0) + 
-        (totalEngagement[0]?.comments || 0) + 
-        (totalEngagement[0]?.shares || 0)
-      ), 
-      change: '+8%', 
-      trend: 'up' as const 
+    {
+      name: "Total Engagement",
+      value: formatNumber(currTotalEng),
+      change: totalEngTrend.change,
+      trend: totalEngTrend.trend,
     },
   ];
-  
-  // Calculate lead distribution based on channels (mocking lead counts for now but using DB platforms)
-  const channelData = channels.map(channel => ({
-    name: channel.name.includes('|') ? channel.name.split('|')[0].trim() : channel.name,
-    platform: channel.platform,
-    growth: channel.platform === 'Instagram' ? '+28%' : channel.platform === 'TikTok' ? '+142%' : '+15%',
-    engagement: channel.platform === 'TikTok' ? '22.1%' : channel.platform === 'Instagram' ? '8.4%' : '5.2%',
-    leads: channel.platform === 'Instagram' ? 820 : channel.platform === 'Facebook' ? 450 : channel.platform === 'WhatsApp' ? 240 : 120,
-    ...platformIcons[channel.platform as keyof typeof platformIcons]
-  }));
+
+  // ── Per-channel data from real queries ─────────────────────────────
+  const channelData = channels.map((channel) => {
+    const currStats = channelPostStats.find((s) => s.channelId === channel.id);
+    const prevStats = prevChannelPostStats.find(
+      (s) => s.channelId === channel.id
+    );
+
+    const currEng =
+      (currStats?.likes ?? 0) +
+      (currStats?.comments ?? 0) +
+      (currStats?.shares ?? 0);
+    const prevEng =
+      (prevStats?.likes ?? 0) +
+      (prevStats?.comments ?? 0) +
+      (prevStats?.shares ?? 0);
+
+    const engRate =
+      (currStats?.reach ?? 0) > 0
+        ? `${((currEng / currStats!.reach) * 100).toFixed(1)}%`
+        : "0.0%";
+
+    const growth = calcPercentChange(currEng, prevEng);
+    const leads =
+      channelLeadCounts.find((l) => l.channelId === channel.id)?.count ?? 0;
+
+    return {
+      name: channel.name.includes("|")
+        ? channel.name.split("|")[0].trim()
+        : channel.name,
+      platform: channel.platform,
+      growth: growth.change,
+      engagement: engRate,
+      leads,
+      ...platformIcons[channel.platform as keyof typeof platformIcons],
+    };
+  });
 
   const totalLeads = channelData.reduce((acc, curr) => acc + curr.leads, 0);
+
+  // ── Growth chart: normalize weekly DB data to bar heights ──────────
+  const last12 = weeklyData.slice(-12);
+  const padded = Array.from({ length: 12 }, (_, i) => {
+    const idx = i - (12 - last12.length);
+    return idx >= 0 && idx < last12.length ? last12[idx].impressions : 0;
+  });
+  const maxWeeklyVal = Math.max(...padded, 1);
+  const chartBars = padded.map((v) =>
+    v > 0 ? Math.max(Math.round((v / maxWeeklyVal) * 100), 5) : 0
+  );
 
   return (
     <div className="space-y-8">
@@ -164,7 +391,7 @@ export default async function AnalyticsPage() {
             </select>
           </div>
           <div className="h-64 flex items-end justify-between gap-2">
-            {[45, 60, 55, 80, 70, 90, 85, 100, 95, 110, 105, 120].map((height, i) => (
+            {chartBars.map((height, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <div 
                   className="w-full bg-blue-600 rounded-t-sm opacity-80 hover:opacity-100 transition-opacity" 
@@ -197,7 +424,7 @@ export default async function AnalyticsPage() {
                     className={`h-1.5 rounded-full ${
                       channel.color?.replace('text', 'bg') || 'bg-gray-600'
                     }`}
-                    style={{ width: `${(channel.leads / totalLeads) * 100}%` }}
+                    style={{ width: `${totalLeads > 0 ? (channel.leads / totalLeads) * 100 : 0}%` }}
                   />
                 </div>
               </div>

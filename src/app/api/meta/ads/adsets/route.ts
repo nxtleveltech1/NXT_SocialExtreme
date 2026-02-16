@@ -90,10 +90,11 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ adSets: storedAdSets });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch ad sets";
     console.error("Error fetching ad sets:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch ad sets" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -155,10 +156,11 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
 
     return NextResponse.json({ adSet, adSets: data.adSets });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create ad set";
     console.error("Error creating ad set:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create ad set" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -211,10 +213,11 @@ export async function PUT(req: NextRequest) {
       .where(eq(adSets.platformAdSetId, adSetId));
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to update ad set";
     console.error("Error updating ad set:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update ad set" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -261,10 +264,11 @@ export async function DELETE(req: NextRequest) {
     await db.delete(adSets).where(eq(adSets.platformAdSetId, adSetId));
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to delete ad set";
     console.error("Error deleting ad set:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete ad set" },
+      { error: message },
       { status: 500 }
     );
   }

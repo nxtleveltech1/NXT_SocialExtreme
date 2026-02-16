@@ -1,21 +1,25 @@
 import { 
   Users, 
   TrendingUp, 
-  MousePointer2, 
+  Eye, 
   MessageCircle,
   Facebook,
   Instagram,
   Video,
   MessageSquare,
-  Music,
-  Zap
 } from "lucide-react";
 
 import { db } from "@/db/db";
-import { channels as channelsTable } from "@/db/schema";
-import { InferSelectModel } from "drizzle-orm";
+import {
+  channels as channelsTable,
+  posts as postsTable,
+  conversations as conversationsTable,
+} from "@/db/schema";
+import { InferSelectModel, desc, sql } from "drizzle-orm";
 
 type Channel = InferSelectModel<typeof channelsTable>;
+type Post = InferSelectModel<typeof postsTable>;
+
 import { auth } from "@clerk/nextjs/server";
 import LoginLanding from "@/components/LoginLanding";
 
@@ -28,12 +32,39 @@ const platformIcons = {
   WhatsApp: { icon: MessageSquare, color: 'bg-green-500' },
 };
 
-const stats = [
-  { name: 'SA Brand Reach', value: '124.2K', change: '+18.5%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
-  { name: 'Studio Bookings', value: '84', change: '+12.2%', icon: Music, color: 'text-purple-600', bg: 'bg-purple-100' },
-  { name: 'Rental Inquiries', value: '342', change: '+22.7%', icon: Zap, color: 'text-yellow-600', bg: 'bg-yellow-100' },
-  { name: 'NXT Support Chats', value: '892', change: '+15.4%', icon: MessageCircle, color: 'text-green-600', bg: 'bg-green-100' },
-];
+/** Parse channel.followers (text) into a number. Handles "12.5K", "1.2M", "10,000", or plain digits. */
+function parseFollowers(value: string | null): number {
+  if (!value) return 0;
+  const cleaned = value.replace(/,/g, '').trim();
+  const match = cleaned.match(/^([\d.]+)\s*([KkMm]?)$/);
+  if (!match) return parseInt(cleaned, 10) || 0;
+  const num = parseFloat(match[1]);
+  const suffix = match[2].toUpperCase();
+  if (suffix === 'K') return Math.round(num * 1_000);
+  if (suffix === 'M') return Math.round(num * 1_000_000);
+  return Math.round(num);
+}
+
+/** Format a number into a compact display string: 1200 → "1.2K", 2400000 → "2.4M" */
+function formatNumber(num: number): string {
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toLocaleString();
+}
+
+/** Relative timestamp: "2h ago", "3d ago", etc. */
+function timeAgo(date: Date | null): string {
+  if (!date) return 'Unknown';
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
 
 export default async function Dashboard() {
   let userId: string | null = null;
@@ -48,6 +79,7 @@ export default async function Dashboard() {
     return <LoginLanding />;
   }
 
+  // ── Fetch channels ──────────────────────────────────────────────
   let channels: Channel[] = [];
   try {
     channels = await db.select().from(channelsTable);
@@ -57,6 +89,67 @@ export default async function Dashboard() {
     }
     channels = [];
   }
+
+  // ── Aggregate post metrics (engagement + reach) ─────────────────
+  let totalEngagement = 0;
+  let totalReach = 0;
+  try {
+    const [postMetrics] = await db
+      .select({
+        totalLikes: sql<string>`coalesce(sum(${postsTable.likes}), 0)`,
+        totalComments: sql<string>`coalesce(sum(${postsTable.comments}), 0)`,
+        totalShares: sql<string>`coalesce(sum(${postsTable.shares}), 0)`,
+        totalReach: sql<string>`coalesce(sum(${postsTable.reach}), 0)`,
+      })
+      .from(postsTable);
+
+    if (postMetrics) {
+      totalEngagement =
+        (Number(postMetrics.totalLikes) || 0) +
+        (Number(postMetrics.totalComments) || 0) +
+        (Number(postMetrics.totalShares) || 0);
+      totalReach = Number(postMetrics.totalReach) || 0;
+    }
+  } catch {
+    // Posts table may not exist yet
+  }
+
+  // ── Count conversations ─────────────────────────────────────────
+  let totalConversations = 0;
+  try {
+    const [convCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(conversationsTable);
+    totalConversations = Number(convCount?.count) || 0;
+  } catch {
+    // Conversations table may not exist yet
+  }
+
+  // ── Total followers (sum parsed text values from all channels) ──
+  const totalFollowers = channels.reduce(
+    (acc, ch) => acc + parseFollowers(ch.followers),
+    0,
+  );
+
+  // ── Fetch recent posts ──────────────────────────────────────────
+  let recentPosts: Post[] = [];
+  try {
+    recentPosts = await db
+      .select()
+      .from(postsTable)
+      .orderBy(desc(postsTable.date))
+      .limit(4);
+  } catch {
+    // Posts table may not exist yet
+  }
+
+  // ── Build stats from real data ──────────────────────────────────
+  const stats = [
+    { name: 'Total Followers', value: formatNumber(totalFollowers), icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { name: 'Total Engagement', value: formatNumber(totalEngagement), icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { name: 'Total Reach', value: formatNumber(totalReach), icon: Eye, color: 'text-yellow-600', bg: 'bg-yellow-100' },
+    { name: 'Conversations', value: formatNumber(totalConversations), icon: MessageCircle, color: 'text-green-600', bg: 'bg-green-100' },
+  ];
 
   return (
     <div className="space-y-8">
@@ -74,9 +167,6 @@ export default async function Dashboard() {
               <div className={stat.bg + " p-2 rounded-lg"}>
                 <stat.icon className={stat.color + " h-6 w-6"} />
               </div>
-              <span className={`text-sm font-medium ${stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                {stat.change}
-              </span>
             </div>
             <div className="mt-4">
               <p className="text-sm font-medium text-gray-500">{stat.name}</p>
@@ -91,58 +181,63 @@ export default async function Dashboard() {
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <h3 className="text-lg font-bold text-gray-900 mb-6">SA Channel Performance</h3>
           <div className="space-y-6">
-            {channels.map((platform) => {
-              const platformInfo = platformIcons[platform.platform as keyof typeof platformIcons] || { icon: MessageSquare, color: 'bg-gray-600' };
-              const Icon = platformInfo.icon;
-              
-              return (
-                <div key={platform.id} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className={`${platformInfo.color} p-2 rounded-lg text-white`}>
-                      <Icon className="h-5 w-5" />
+            {channels.length === 0 ? (
+              <p className="text-sm text-gray-400">No channels connected yet.</p>
+            ) : (
+              channels.map((platform) => {
+                const platformInfo = platformIcons[platform.platform as keyof typeof platformIcons] || { icon: MessageSquare, color: 'bg-gray-600' };
+                const Icon = platformInfo.icon;
+                
+                return (
+                  <div key={platform.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={`${platformInfo.color} p-2 rounded-lg text-white`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{platform.platform}</p>
+                        <p className="text-xs text-gray-500">{platform.handle || platform.name}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{platform.platform}</p>
-                      <p className="text-xs text-gray-500">{platform.handle || platform.name}</p>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-900">{platform.followers || '0'}</p>
+                      <p className={`text-xs font-medium ${platform.status === 'Healthy' ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {platform.status || 'Unknown'}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">{platform.followers}</p>
-                    <p className="text-xs text-green-600 font-medium">
-                      Healthy
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-gray-900">Recent Studio Activity</h3>
+            <h3 className="text-lg font-bold text-gray-900">Recent Posts</h3>
             <button className="text-sm text-blue-600 font-medium hover:underline">View All</button>
           </div>
           <div className="space-y-4">
-            {[
-              { type: 'Booking', title: 'Full Day Recording - Studio A', time: '2h ago', status: 'Confirmed' },
-              { type: 'Rental', title: 'JBL PRX System - Weekend Hire', time: '5h ago', status: 'Pending' },
-              { type: 'Repair', title: 'Yamaha Mixer - Service Complete', time: '1d ago', status: 'Ready' },
-              { type: 'Sale', title: 'beamZ Pro DMX Controller', time: '1d ago', status: 'Shipped' },
-            ].map((activity, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-600" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{activity.title}</p>
-                    <p className="text-xs text-gray-500">{activity.type} • {activity.time}</p>
+            {recentPosts.length === 0 ? (
+              <p className="text-sm text-gray-400">No posts yet.</p>
+            ) : (
+              recentPosts.map((post) => (
+                <div key={post.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 rounded-full bg-blue-600" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 line-clamp-1">
+                        {post.content.length > 60 ? post.content.substring(0, 60) + '\u2026' : post.content}
+                      </p>
+                      <p className="text-xs text-gray-500">{post.platform} &bull; {timeAgo(post.date)}</p>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded shrink-0">
+                    {post.status || 'published'}
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                  {activity.status}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

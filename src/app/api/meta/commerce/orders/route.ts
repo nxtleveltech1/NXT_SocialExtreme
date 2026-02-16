@@ -59,9 +59,10 @@ export async function GET(req: NextRequest) {
         currency: ordersList[0]?.currency || "USD",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch orders";
     console.error("Error fetching orders:", error);
-    return NextResponse.json({ error: error.message || "Failed to fetch orders" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

@@ -1,7 +1,7 @@
 import { db } from "@/db/db";
 import { channels } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import {
   syncMetaMessages,
@@ -13,7 +13,7 @@ import {
  * POST /api/messages/sync
  * Sync messages from all connected platforms
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     await requireAuth();
 
@@ -65,22 +65,23 @@ export async function POST(req: Request) {
           channelName: channel.name,
           ...syncResult,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         syncResults.push({
           channelId: channel.id,
           platform: channel.platform,
           channelName: channel.name,
           synced: 0,
-          errors: [error.message],
+          errors: [error instanceof Error ? error.message : "Unknown error"],
         });
       }
     }
 
     return NextResponse.json({ results: syncResults });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to sync messages";
     console.error("Failed to sync messages:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to sync messages" },
+      { error: message },
       { status: 500 }
     );
   }

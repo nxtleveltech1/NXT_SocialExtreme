@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to send WhatsApp message";
     return NextResponse.json(
-      { error: error.message || "Failed to send WhatsApp message" },
+      { error: message },
       { status: 500 }
     );
   }

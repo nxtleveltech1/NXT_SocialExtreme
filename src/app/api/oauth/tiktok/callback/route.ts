@@ -4,7 +4,7 @@ import { encryptSecret } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import { verifyOAuthState } from "@/lib/oauth/state";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -76,7 +76,7 @@ async function fetchTikTokUserInfo(accessToken: string) {
   };
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     requireTikTokEnv();
 
@@ -164,9 +164,10 @@ export async function GET(req: Request) {
     const redirectUrl = new URL("/channels", url.origin);
     redirectUrl.searchParams.set("connected", "tiktok");
     return NextResponse.redirect(redirectUrl.toString());
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "TikTok OAuth callback failed";
     console.error("TikTok OAuth callback error:", err);
-    return NextResponse.json({ error: err?.message ?? "TikTok OAuth callback failed" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

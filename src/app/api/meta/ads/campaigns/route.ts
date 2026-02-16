@@ -50,7 +50,7 @@ export const GET = withRateLimit(async (req: Request) => {
     );
 
     return NextResponse.json({ campaigns });
-  } catch (error) {
+  } catch (error: unknown) {
     const { error: message, status } = handleApiError(error);
     return NextResponse.json({ error: message }, { status });
   }
@@ -118,7 +118,7 @@ export const POST = withRateLimit(async (req: Request) => {
 
     await syncAdCampaigns(body.channelId, body.adAccountId);
       return NextResponse.json({ campaign });
-  } catch (error) {
+  } catch (error: unknown) {
     const { error: message, status } = handleApiError(error);
     return NextResponse.json({ error: message }, { status });
   }

@@ -3,7 +3,7 @@ import { channels, posts, publishJobs } from "@/db/schema";
 import { env } from "@/lib/env";
 import { publishPostForChannel } from "@/lib/publishing";
 import { and, asc, eq, lte } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 
 export const runtime = "nodejs";
@@ -15,7 +15,7 @@ function safeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(aBuf, bBuf);
 }
 
-function requireRunnerSecret(req: Request): boolean {
+function requireRunnerSecret(req: NextRequest): boolean {
   if (!env.JOB_RUNNER_SECRET) return false;
   const authHeader = req.headers.get("authorization") ?? "";
   return safeEqual(authHeader, `Bearer ${env.JOB_RUNNER_SECRET}`);
@@ -27,7 +27,7 @@ function nextBackoffMs(attempts: number): number {
   return minutes * 60 * 1000;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   if (!requireRunnerSecret(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -94,9 +94,9 @@ export async function POST(req: Request) {
 
       results.push({ jobId: job.id, status: "succeeded" });
       processed += 1;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const attempts = (job.attempts ?? 0) + 1;
-      const lastError = String(err?.message ?? err ?? "Unknown error");
+      const lastError = err instanceof Error ? err.message : "Unknown error";
 
       if (attempts >= (job.maxAttempts ?? 5)) {
         await db

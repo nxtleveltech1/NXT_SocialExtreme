@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { createOAuthState } from "@/lib/oauth/state";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -12,7 +12,7 @@ function requireTikTokEnv() {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     requireTikTokEnv();
 
@@ -39,8 +39,8 @@ export async function GET(req: Request) {
     authUrl.searchParams.set("scope", scope);
 
     return NextResponse.redirect(authUrl.toString());
-  } catch (err: any) {
-    const errorMsg = err?.message ?? "Failed to start TikTok OAuth";
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to start TikTok OAuth";
     console.error("TikTok OAuth start error:", errorMsg);
     
     // If accessed via browser redirect, return HTML error page

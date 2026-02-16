@@ -28,9 +28,10 @@ export async function GET(req: NextRequest) {
       .where(eq(products.catalogId, parseInt(catalogId)));
 
     return NextResponse.json({ products: productsList });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch products";
     return NextResponse.json(
-      { error: error.message || "Failed to fetch products" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -102,9 +103,10 @@ export async function POST(req: NextRequest) {
     await syncProducts(parseInt(catalogId));
 
     return NextResponse.json({ product });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create product";
     return NextResponse.json(
-      { error: error.message || "Failed to create product" },
+      { error: message },
       { status: 500 }
     );
   }

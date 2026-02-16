@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   generateWeeklyContent,
   generateContentIdeas,
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
  * GET /api/agents/content-engine
  * Generate content ideas or weekly batch
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get("mode") || "ideas";
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       topic: topic.name,
       ideas,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Content engine error:", error);
     return NextResponse.json(
       { error: "Failed to generate content" },
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
  * POST /api/agents/content-engine
  * Generate a specific draft or save a draft as a post
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action, idea, topicId, platform, draftId, channelId, draft } = body;
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       { error: "Invalid action. Use 'generate-draft' or 'save-draft'" },
       { status: 400 }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Content engine error:", error);
     return NextResponse.json(
       { error: "Failed to process request" },

@@ -1,7 +1,7 @@
 import { db } from "@/db/db";
 import { conversations, messages } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 
 /**
@@ -9,7 +9,7 @@ import { requireAuth } from "@/lib/api-auth";
  * Mark conversation and messages as read
  */
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ conversationId: string }> }
 ) {
   try {
@@ -36,10 +36,11 @@ export async function POST(
       );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to mark as read";
     console.error("Failed to mark as read:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to mark as read" },
+      { error: message },
       { status: 500 }
     );
   }

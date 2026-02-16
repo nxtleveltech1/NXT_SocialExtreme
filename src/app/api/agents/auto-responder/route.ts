@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   processUnreadMessages,
   classifyMessageIntent,
@@ -17,7 +17,7 @@ export const runtime = "nodejs";
  * GET /api/agents/auto-responder
  * Process unread messages and return suggested responses
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const autoReply = searchParams.get("autoReply") === "true";
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
       processed: results.length,
       results,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Auto-responder error:", error);
     return NextResponse.json(
       { error: "Failed to process messages" },
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
  * POST /api/agents/auto-responder
  * Classify a single message and optionally send a response
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { conversationId, messageContent, sendReply, customResponse } = body;
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       suggestedResponse,
       sent: false,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Auto-responder error:", error);
     return NextResponse.json(
       { error: "Failed to process message" },

@@ -3,7 +3,7 @@ import { webhookEvents } from "@/db/schema";
 import { env } from "@/lib/env";
 import { findChannelForMetaWebhook, syncMetaChannel } from "@/lib/integrations/meta";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 
 export const runtime = "nodejs";
@@ -39,7 +39,7 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
  * - hub.verify_token matches META_WEBHOOK_VERIFY_TOKEN
  * - respond hub.challenge as plain text
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     requireMetaWebhookEnv();
 
@@ -53,8 +53,9 @@ export async function GET(req: Request) {
     }
 
     return new Response("Forbidden", { status: 403 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Webhook verification failed" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Webhook verification failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
  * - verify X-Hub-Signature-256 using META_APP_SECRET
  * - store raw payload for async processing
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     requireMetaWebhookEnv();
 
@@ -307,7 +308,8 @@ export async function POST(req: Request) {
       .where(eq(webhookEvents.id, event.id));
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Webhook ingest failed";
     console.error("Meta webhook ingest error:", err);
 
     try {
@@ -315,7 +317,7 @@ export async function POST(req: Request) {
       // (We do not have the event id here reliably; ingestion failures are handled above.)
     } catch {}
 
-    return NextResponse.json({ error: err?.message ?? "Webhook ingest failed" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

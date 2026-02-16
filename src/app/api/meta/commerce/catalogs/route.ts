@@ -27,9 +27,10 @@ export async function GET(req: NextRequest) {
       .where(eq(productCatalogs.channelId, parseInt(channelId)));
 
     return NextResponse.json({ catalogs });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch catalogs";
     return NextResponse.json(
-      { error: error.message || "Failed to fetch catalogs" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -68,9 +69,10 @@ export async function POST(req: NextRequest) {
     await syncProductCatalogs(parseInt(channelId), businessId);
 
     return NextResponse.json({ catalog });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create catalog";
     return NextResponse.json(
-      { error: error.message || "Failed to create catalog" },
+      { error: message },
       { status: 500 }
     );
   }

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         metrics: metrics.length,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching channel details:', error);
     return NextResponse.json({ error: 'Failed to fetch channel details' }, { status: 500 });
   }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .returning();
 
     return NextResponse.json({ event: webhookEvent[0] });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating webhook event:', error);
     return NextResponse.json({ error: 'Failed to create webhook event' }, { status: 400 });
   }

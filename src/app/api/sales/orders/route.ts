@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
           .update(orders)
           .set({ whatsappMessageId })
           .where(eq(orders.id, order.id))
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error sending WhatsApp message:", error)
         // Don't fail the order creation if WhatsApp fails
       }
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
       whatsappMessageId,
       message, // Return message in case WhatsApp sending failed
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating order:", error)
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 })
   }
@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
     )
 
     return NextResponse.json(ordersWithItems)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching orders:", error)
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 })
   }

@@ -1,13 +1,13 @@
 import { db } from "@/db/db";
 import { conversations as conversationsTable, posts as postsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const FB_GRAPH_URL = "https://graph.facebook.com/v19.0";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const { conversationId, message } = await req.json();
 
@@ -49,9 +49,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ error: `Reply not supported for platform: ${conversation.platform}` }, { status: 400 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Reply failed";
     console.error("Reply API error:", err);
-    return NextResponse.json({ error: err?.message ?? "Reply failed" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

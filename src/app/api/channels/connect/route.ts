@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
 
     // Password-based “connections” are not compliant with Meta/TikTok platform policies.
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       { status: 410 }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Connection Error:", error);
     return NextResponse.json(
       { error: "Failed to connect platform" },

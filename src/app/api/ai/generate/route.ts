@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 // Initialize OpenRouter client (OpenAI-compatible)
@@ -11,7 +11,7 @@ const openrouter = new OpenAI({
   },
 });
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const { prompt, platform, tone } = await req.json();
 
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       usage: completion.usage
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("AI Generation Error:", error);
     return NextResponse.json({ error: "Failed to generate content" }, { status: 500 });
   }

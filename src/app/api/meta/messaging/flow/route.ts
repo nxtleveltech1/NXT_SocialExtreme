@@ -1,7 +1,7 @@
 import { sendWhatsAppFlowComprehensive } from "@/lib/integrations/meta-comprehensive";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { channelId, to, flowParams } = body;
@@ -13,8 +13,9 @@ export async function POST(req: Request) {
     const result = await sendWhatsAppFlowComprehensive(channelId, to, flowParams);
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

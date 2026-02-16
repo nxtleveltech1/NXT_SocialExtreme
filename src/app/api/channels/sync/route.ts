@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
 
     const { channelId, platform } = await req.json();
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(result);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Sync API Error:", error);
     return NextResponse.json({ error: "Sync failed" }, { status: 500 });
   }

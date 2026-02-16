@@ -60,7 +60,8 @@ export default function CreatePostPage() {
       try {
         const res = await fetch("/api/channels");
         const data = await res.json();
-        setChannels(Array.isArray(data) ? data : []);
+        const list = data?.channels ?? data;
+        setChannels(Array.isArray(list) ? list : []);
       } catch {
         setChannels([]);
       }

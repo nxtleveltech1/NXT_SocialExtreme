@@ -64,16 +64,17 @@ export async function POST(req: NextRequest) {
         status: job.status,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }
+    const message = error instanceof Error ? error.message : "Failed to schedule post";
     console.error("Error scheduling post:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to schedule post" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -101,10 +102,11 @@ export async function GET(req: NextRequest) {
       .orderBy(posts.scheduledAt);
 
     return NextResponse.json({ posts: scheduledPosts });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch scheduled posts";
     console.error("Error fetching scheduled posts:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch scheduled posts" },
+      { error: message },
       { status: 500 }
     );
   }

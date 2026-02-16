@@ -1,9 +1,9 @@
 import { db } from "@/db/db";
 import { channels as channelsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
 
     const { channelId } = await req.json();
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       .where(eq(channelsTable.id, parseInt(channelId)));
 
     return NextResponse.json({ success: true, message: "Channel disconnected successfully" });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Disconnect Error:", error);
     return NextResponse.json({ error: "Failed to disconnect channel" }, { status: 500 });
   }

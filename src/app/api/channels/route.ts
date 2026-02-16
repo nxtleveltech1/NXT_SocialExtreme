@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   try {
     const channelsData = await db.select().from(channels);
     return NextResponse.json({ channels: channelsData });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching channels:', error);
     return NextResponse.json({ error: 'Failed to fetch channels' }, { status: 500 });
   }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }).returning();
 
     return NextResponse.json({ channel: newChannel[0] }, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating channel:', error);
     return NextResponse.json({ error: 'Failed to create channel' }, { status: 400 });
   }
@@ -85,7 +85,7 @@ export async function PUT(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ channel: updatedChannel[0] });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error updating channel:', error);
     return NextResponse.json({ error: 'Failed to update channel' }, { status: 400 });
   }
@@ -102,7 +102,7 @@ export async function DELETE(request: NextRequest) {
 
     await db.delete(channels).where(eq(channels.id, parseInt(id)));
     return NextResponse.json({ message: 'Channel deleted successfully' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error deleting channel:', error);
     return NextResponse.json({ error: 'Failed to delete channel' }, { status: 500 });
   }
@@ -115,7 +115,7 @@ export async function PATCH(request: NextRequest) {
     const validatedData = MessageQueueSchema.parse(body);
 
     return NextResponse.json({ message: 'Message queued for delivery', queueId: null });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error queuing message:', error);
     return NextResponse.json({ error: 'Failed to queue message' }, { status: 400 });
   }

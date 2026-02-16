@@ -184,10 +184,11 @@ export async function POST(req: NextRequest) {
       expiresAt: null,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Token exchange failed";
     console.error("Token exchange error:", error);
     return NextResponse.json({ 
-      error: error.message || "Token exchange failed" 
+      error: message 
     }, { status: 500 });
   }
 }

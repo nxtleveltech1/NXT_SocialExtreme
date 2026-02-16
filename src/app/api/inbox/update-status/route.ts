@@ -1,11 +1,11 @@
 import { db } from "@/db/db";
 import { conversations as conversationsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
 
     const { conversationId, status, priority, tags } = await req.json();
@@ -23,9 +23,10 @@ export async function POST(req: Request) {
     await db.update(conversationsTable).set(updates).where(eq(conversationsTable.id, parseInt(conversationId)));
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Update failed";
     console.error("Update status API error:", err);
-    return NextResponse.json({ error: err?.message ?? "Update failed" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

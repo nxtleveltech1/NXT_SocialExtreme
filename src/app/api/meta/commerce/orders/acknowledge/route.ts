@@ -32,16 +32,17 @@ export async function POST(req: NextRequest) {
     await client.acknowledgeOrder(validated.orderId);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }
+    const message = error instanceof Error ? error.message : "Failed to acknowledge order";
     console.error("Error acknowledging order:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to acknowledge order" },
+      { error: message },
       { status: 500 }
     );
   }

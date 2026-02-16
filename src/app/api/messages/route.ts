@@ -1,14 +1,14 @@
 import { db } from "@/db/db";
 import { messages, conversations } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 
 /**
  * GET /api/messages
  * Get messages for a conversation or all conversations
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     await requireAuth();
 
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ messages: messagesList });
     }
 
-    // Get all conversations with their latest message
+    // Get all conversations with their latest message and unread count
     const allConversations = await db
       .select()
       .from(conversations)
@@ -44,18 +44,32 @@ export async function GET(req: Request) {
           .orderBy(desc(messages.timestamp))
           .limit(1);
 
+        // Count unread inbound messages for this conversation
+        const [unreadResult] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.conversationId, conv.id),
+              eq(messages.direction, "inbound"),
+              sql`(${messages.status} IS NULL OR ${messages.status} != 'read')`
+            )
+          );
+
         return {
           ...conv,
+          unreadCount: Number(unreadResult?.count ?? 0),
           latestMessage: latestMessage || null,
         };
       })
     );
 
     return NextResponse.json({ conversations: conversationsWithMessages });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch messages";
     console.error("Failed to fetch messages:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch messages" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -65,7 +79,7 @@ export async function GET(req: Request) {
  * POST /api/messages
  * Send a message to a conversation
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     await requireAuth();
 
@@ -125,10 +139,11 @@ export async function POST(req: Request) {
       .where(eq(messages.id, newMessage.id));
 
     return NextResponse.json({ message: newMessage, success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to send message";
     console.error("Failed to send message:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to send message" },
+      { error: message },
       { status: 500 }
     );
   }

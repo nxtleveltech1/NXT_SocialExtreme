@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
     return NextResponse.json(healthStatus, { status: statusCode });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Health check error:', error);
     return NextResponse.json({
       status: 'unhealthy',
@@ -76,7 +76,7 @@ async function checkDatabaseHealth(): Promise<boolean> {
   try {
     const result = await db.select({ count: channels.id }).from(channels).limit(1);
     return result.length > 0;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Database health check failed:', error);
     return false;
   }
@@ -90,7 +90,7 @@ async function getChannelHealth(): Promise<{ total: number; connected: number; d
     const disconnected = total - connected;
 
     return { total, connected, disconnected };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Channel health check failed:', error);
     return { total: 0, connected: 0, disconnected: 0 };
   }

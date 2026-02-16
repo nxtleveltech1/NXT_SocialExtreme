@@ -85,10 +85,11 @@ export async function GET(req: NextRequest) {
       .where(eq(adCreatives.channelId, parseInt(channelId)));
 
     return NextResponse.json({ creatives: storedCreatives });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch creatives";
     console.error("Error fetching creatives:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch creatives" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -122,16 +123,17 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
 
     return NextResponse.json({ creative, creatives: data.creatives });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }
+    const message = error instanceof Error ? error.message : "Failed to create creative";
     console.error("Error creating creative:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create creative" },
+      { error: message },
       { status: 500 }
     );
   }

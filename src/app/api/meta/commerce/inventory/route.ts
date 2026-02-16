@@ -46,16 +46,17 @@ export async function POST(req: NextRequest) {
     const result = await client.updateBatchInventory(validated.catalogId, validated.updates);
 
     return NextResponse.json({ success: result.success, updates: validated.updates.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }
+    const message = error instanceof Error ? error.message : "Failed to update inventory";
     console.error("Error updating inventory:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update inventory" },
+      { error: message },
       { status: 500 }
     );
   }

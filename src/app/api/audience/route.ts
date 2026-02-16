@@ -1,9 +1,9 @@
 import { db } from "@/db/db";
 import { followers } from "@/db/schema";
 import { and, desc, eq, like } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
 
     const { searchParams } = new URL(req.url);
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
       .orderBy(desc(followers.engagementScore));
 
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Follower Fetch Error:", error);
     return NextResponse.json({ error: "Failed to fetch followers" }, { status: 500 });
   }

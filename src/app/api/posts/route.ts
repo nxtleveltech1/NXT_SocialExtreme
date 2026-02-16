@@ -1,11 +1,11 @@
 import { db } from "@/db/db";
 import { channels, posts, publishJobs } from "@/db/schema";
 import { desc, eq, and } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const status = url.searchParams.get("status");
   const channelId = url.searchParams.get("channelId");
@@ -36,7 +36,7 @@ type CreatePostBody = {
   scheduledAt?: string | null; // ISO
 };
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
 
   const body = (await req.json()) as Partial<CreatePostBody>;
   const channelId = Number(body.channelId);

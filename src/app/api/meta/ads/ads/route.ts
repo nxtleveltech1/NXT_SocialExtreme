@@ -86,10 +86,11 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ ads: storedAds });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch ads";
     console.error("Error fetching ads:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch ads" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -151,10 +152,11 @@ export async function POST(req: NextRequest) {
     const data = await res.json();
 
     return NextResponse.json({ ad, ads: data.ads });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to create ad";
     console.error("Error creating ad:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to create ad" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -227,10 +229,11 @@ export async function PUT(req: NextRequest) {
       .where(eq(ads.platformAdId, adId));
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to update ad";
     console.error("Error updating ad:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to update ad" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -297,10 +300,11 @@ export async function DELETE(req: NextRequest) {
     await db.delete(ads).where(eq(ads.platformAdId, adId));
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to delete ad";
     console.error("Error deleting ad:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete ad" },
+      { error: message },
       { status: 500 }
     );
   }

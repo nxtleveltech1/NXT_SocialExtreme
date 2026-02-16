@@ -1,11 +1,11 @@
 import { db } from "@/db/db";
 import { conversations as conversationsTable, posts as postsTable } from "@/db/schema";
 import { desc, gte, sql } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
 
     const url = new URL(req.url);
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
         date: p.date,
       })),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Analytics API error:", err);
     // Return default values so client doesn't break
     return NextResponse.json({

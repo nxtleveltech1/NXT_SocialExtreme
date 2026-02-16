@@ -4,7 +4,6 @@ import {
   Users, 
   MapPin, 
   Search, 
-  Filter, 
   Crown, 
   Star, 
   TrendingUp, 
@@ -12,96 +11,98 @@ import {
   Instagram,
   Video,
   MessageSquare,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2,
+  UserX,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const segments = ["All", "VIP", "Local", "Influencer", "New Lead"];
 
-interface AudienceMember {
+interface Follower {
   id: number;
-  username: string;
-  name: string;
-  avatar: string;
+  platformId: string;
   platform: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  location: string | null;
+  isVerified: boolean;
+  followerCount: number | null;
+  engagementScore: number;
   segment: string;
-  score: number;
-  location: string;
-  bio: string;
+  lastActive: string | null;
+  createdAt: string;
+}
+
+interface AudienceStats {
+  totalFollowers: number;
+  totalReach: number;
+  vipCount: number;
+  localPercent: number;
 }
 
 export default function AudiencePage() {
   const [activeSegment, setActiveSegment] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [audience, setAudience] = useState<AudienceMember[]>([]);
+  const [followers, setFollowers] = useState<Follower[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ totalReach: 0, vipCount: 0, localPercent: 0 });
+  const [stats, setStats] = useState<AudienceStats>({
+    totalFollowers: 0,
+    totalReach: 0,
+    vipCount: 0,
+    localPercent: 0,
+  });
 
   useEffect(() => {
-    const fetchAudience = async () => {
-      try {
-        // Fetch conversations from API as audience proxy
-        const res = await fetch("/api/messages");
-        const data = await res.json();
-        const convs = data.conversations || [];
-
-        // Transform conversations into audience members
-        const audienceData: AudienceMember[] = convs.map((conv: any, idx: number) => {
-          // Determine segment based on engagement
-          let segment = "New Lead";
-          let score = 50;
-          if (conv.unreadCount > 2) {
-            segment = "VIP";
-            score = 95;
-          } else if (conv.platform === "WhatsApp") {
-            segment = "Local";
-            score = 85;
-          } else if (conv.platform === "Instagram" || conv.platform === "TikTok") {
-            segment = "Influencer";
-            score = 75;
-          }
-
-          return {
-            id: conv.id,
-            username: conv.platformConversationId || `@${conv.userName?.replace(/\s+/g, "_").toLowerCase()}`,
-            name: conv.userName || "Unknown",
-            avatar: (conv.userName || "U").substring(0, 2).toUpperCase(),
-            platform: conv.platform,
-            segment,
-            score,
-            location: "Cape Town", // Default for now
-            bio: conv.lastMessage?.substring(0, 50) || "No recent activity",
-          };
-        });
-
-        setAudience(audienceData);
-
-        // Calculate stats from channels
-        const channelRes = await fetch("/api/channels");
-        const channelData = await channelRes.json();
-        const channels = Array.isArray(channelData) ? channelData : channelData.channels || [];
-        
-        const totalFollowers = channels.reduce((sum: number, ch: any) => {
-          const count = parseInt(String(ch.followers || "0").replace(/,/g, "")) || 0;
-          return sum + count;
-        }, 0);
-
-        setStats({
-          totalReach: totalFollowers,
-          vipCount: audienceData.filter((a) => a.segment === "VIP").length,
-          localPercent: audienceData.length > 0 
-            ? Math.round((audienceData.filter((a) => a.segment === "Local").length / audienceData.length) * 100)
-            : 0,
-        });
-      } catch (error) {
-        console.error("Failed to fetch audience:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchAudience();
-  }, []);
+  }, [activeSegment, searchQuery]);
+
+  const fetchAudience = async () => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams();
+
+      if (activeSegment !== "All") {
+        params.set("segment", activeSegment);
+      }
+      if (searchQuery.trim()) {
+        params.set("search", searchQuery.trim());
+      }
+
+      const res = await fetch(`/api/followers?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch followers");
+
+      const data = await res.json();
+      setFollowers(data.followers || []);
+      if (data.stats) {
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error("Failed to fetch audience:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getAvatar = (follower: Follower) => {
+    const name = follower.displayName || follower.username || "?";
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getSegmentBadge = (segment: string) => {
+    switch (segment) {
+      case "VIP":
+        return "bg-yellow-100 text-yellow-700";
+      case "Local":
+        return "bg-blue-100 text-blue-700";
+      case "Influencer":
+        return "bg-purple-100 text-purple-700";
+      default:
+        return "bg-gray-100 text-gray-600";
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -110,7 +111,11 @@ export default function AudiencePage() {
           <Users className="text-blue-600" />
           Audience Intelligence
         </h1>
-        <p className="text-gray-500">Deep-dive into your 45k+ followers across all platforms.</p>
+        <p className="text-gray-500">
+          {stats.totalFollowers > 0
+            ? `Deep-dive into your ${stats.totalFollowers.toLocaleString()} tracked followers across all platforms.`
+            : "Track and manage your followers across all platforms."}
+        </p>
       </div>
 
       {/* Stats Overview */}
@@ -145,26 +150,26 @@ export default function AudiencePage() {
 
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between h-32">
           <div className="flex items-start justify-between">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Cape Town Locals</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Local Audience</p>
             <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
               <MapPin size={16} />
             </div>
           </div>
           <div>
             <h3 className="text-2xl font-black text-gray-900">{stats.localPercent}%</h3>
-            <p className="text-xs font-bold text-gray-500 mt-1">Of total audience</p>
+            <p className="text-xs font-bold text-gray-500 mt-1">Of tracked followers</p>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between h-32">
           <div className="flex items-start justify-between">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Conversations</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tracked Followers</p>
             <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg">
-              <MessageSquare size={16} />
+              <Star size={16} />
             </div>
           </div>
           <div>
-            <h3 className="text-2xl font-black text-gray-900">{audience.length}</h3>
+            <h3 className="text-2xl font-black text-gray-900">{stats.totalFollowers}</h3>
             <p className="text-xs font-bold text-gray-500 mt-1">Across all platforms</p>
           </div>
         </div>
@@ -193,7 +198,7 @@ export default function AudiencePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
             <input 
               type="text" 
-              placeholder="Search by name, bio, or job..." 
+              placeholder="Search by name, bio, or username..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
@@ -213,63 +218,101 @@ export default function AudiencePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {audience.map((user) => (
-                <tr key={user.id} className="hover:bg-blue-50/30 transition-colors group cursor-pointer">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 text-xs">
-                          {user.avatar}
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
-                          {user.platform === 'Instagram' && <Instagram size={12} className="text-pink-600" />}
-                          {user.platform === 'Facebook' && <Facebook size={12} className="text-blue-600" />}
-                          {user.platform === 'TikTok' && <Video size={12} className="text-black" />}
-                          {user.platform === 'WhatsApp' && <MessageSquare size={12} className="text-green-600" />}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900 text-sm">{user.name}</h4>
-                        <p className="text-xs text-gray-500">{user.username}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5 italic truncate max-w-[150px]">{user.bio}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                      user.segment === 'VIP' ? 'bg-yellow-100 text-yellow-700' :
-                      user.segment === 'Local' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {user.segment}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${
-                            user.score > 90 ? 'bg-green-500' : user.score > 70 ? 'bg-blue-500' : 'bg-gray-400'
-                          }`}
-                          style={{ width: `${user.score}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-gray-700">{user.score}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-gray-500">
-                      <MapPin size={14} />
-                      <span className="text-xs">{user.location}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                      <MoreHorizontal size={18} />
-                    </button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">Loading audience data...</p>
                   </td>
                 </tr>
-              ))}
+              ) : followers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <UserX className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-gray-500 mb-1">No followers found</p>
+                    <p className="text-xs text-gray-400">
+                      {searchQuery || activeSegment !== "All"
+                        ? "Try adjusting your filters or search query."
+                        : "Connect your social channels and sync to start tracking followers."}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                followers.map((user) => (
+                  <tr key={user.id} className="hover:bg-blue-50/30 transition-colors group cursor-pointer">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          {user.avatarUrl ? (
+                            <img
+                              src={user.avatarUrl}
+                              alt={user.displayName || user.username}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-500 text-xs">
+                              {getAvatar(user)}
+                            </div>
+                          )}
+                          <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
+                            {user.platform === 'Instagram' && <Instagram size={12} className="text-pink-600" />}
+                            {user.platform === 'Facebook' && <Facebook size={12} className="text-blue-600" />}
+                            {user.platform === 'TikTok' && <Video size={12} className="text-black" />}
+                            {user.platform === 'WhatsApp' && <MessageSquare size={12} className="text-green-600" />}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm">
+                            {user.displayName || user.username}
+                            {user.isVerified && (
+                              <span className="ml-1 text-blue-500" title="Verified">✓</span>
+                            )}
+                          </h4>
+                          <p className="text-xs text-gray-500">@{user.username}</p>
+                          {user.bio && (
+                            <p className="text-[10px] text-gray-400 mt-0.5 italic truncate max-w-[200px]">
+                              {user.bio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${getSegmentBadge(user.segment)}`}>
+                        {user.segment}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${
+                              user.engagementScore > 90 ? 'bg-green-500' : user.engagementScore > 70 ? 'bg-blue-500' : 'bg-gray-400'
+                            }`}
+                            style={{ width: `${user.engagementScore}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold text-gray-700">{user.engagementScore}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {user.location ? (
+                        <div className="flex items-center gap-1.5 text-gray-500">
+                          <MapPin size={14} />
+                          <span className="text-xs">{user.location}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                        <MoreHorizontal size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

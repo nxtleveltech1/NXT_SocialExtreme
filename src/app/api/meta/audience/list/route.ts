@@ -33,10 +33,11 @@ export async function GET(req: NextRequest) {
     const audiences = await client.getCustomAudiences(adAccountId, 100);
 
     return NextResponse.json({ audiences: audiences.data });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch audiences";
     console.error("Error fetching audiences:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to fetch audiences" },
+      { error: message },
       { status: 500 }
     );
   }

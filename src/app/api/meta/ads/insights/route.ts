@@ -63,7 +63,7 @@ export const GET = withRateLimit(async (req: Request) => {
       insights: Object.values(aggregated),
       raw: insights,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const { error: message, status } = handleApiError(error);
     return NextResponse.json({ error: message }, { status });
   }

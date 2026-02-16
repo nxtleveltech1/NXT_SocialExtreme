@@ -27,7 +27,7 @@ async function authenticateFacebook(username: string, password: string): Promise
       success: true,
       accessToken: `fb_access_token_${Date.now()}`, // Mock token
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Facebook authentication error:', error);
     return {
       success: false,
@@ -46,7 +46,7 @@ async function authenticateInstagram(username: string, password: string): Promis
       success: true,
       accessToken: `ig_access_token_${Date.now()}`, // Mock token
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Instagram authentication error:', error);
     return {
       success: false,
@@ -65,7 +65,7 @@ async function authenticateTikTok(username: string, password: string): Promise<{
       success: true,
       accessToken: `tt_access_token_${Date.now()}`, // Mock token
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('TikTok authentication error:', error);
     return {
       success: false,
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         error: authResult.error || 'Authentication failed',
       }, { status: 401 });
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Authentication error:', error);
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
   }
@@ -163,7 +163,7 @@ export async function DELETE(request: NextRequest) {
       .where(eq(channels.id, parseInt(channelId)));
 
     return NextResponse.json({ message: 'Channel disconnected successfully' });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Disconnect error:', error);
     return NextResponse.json({ error: 'Failed to disconnect channel' }, { status: 500 });
   }

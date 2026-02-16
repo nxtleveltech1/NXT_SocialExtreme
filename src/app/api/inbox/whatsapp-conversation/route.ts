@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       .limit(1)
 
     return NextResponse.json({ conversation, channel })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching WhatsApp conversation:", error)
     return NextResponse.json({ error: "Failed to fetch conversation" }, { status: 500 })
   }

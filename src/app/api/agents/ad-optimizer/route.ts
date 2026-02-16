@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   runAdOptimization,
   getOptimizationSummary,
@@ -20,7 +20,7 @@ export async function GET() {
       summary,
       rules: DEFAULT_RULES,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Ad optimizer error:", error);
     return NextResponse.json(
       { error: "Failed to get optimization summary" },
@@ -33,7 +33,7 @@ export async function GET() {
  * POST /api/agents/ad-optimizer
  * Run ad optimization with optional custom rules
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const customRules = body.rules as OptimizationRule[] | undefined;
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       resultsCount: results.length,
       results,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Ad optimizer error:", error);
     return NextResponse.json(
       { error: "Failed to run optimization" },

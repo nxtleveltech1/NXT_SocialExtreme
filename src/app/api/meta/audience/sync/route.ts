@@ -8,7 +8,7 @@ const BodySchema = z.object({
   channelId: z.number().int().positive(),
   adAccountId: z.string().min(1),
   audienceName: z.string().min(1),
-  source: z.string().optional(),
+  source: z.enum(["followers", "conversations"]).optional(),
 });
 
 export const POST = withRateLimit(async (req: Request) => {

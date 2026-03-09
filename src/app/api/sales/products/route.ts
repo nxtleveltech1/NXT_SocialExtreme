@@ -154,4 +154,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Failed to delete product" }, { status: 500 })
   }
 }
-

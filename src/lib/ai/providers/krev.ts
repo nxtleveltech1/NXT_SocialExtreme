@@ -44,30 +44,32 @@ export const krevAdapter: AIProviderAdapter = {
   slug: "krev",
   capabilities: { text: true, structured: false, image: true, video: true, streaming: false },
   async validateCredentials(config) {
+    if (!config.apiKey) {
+      return { ok: false, message: "No API key configured for Krev AI." };
+    }
+
+    // Try the health endpoint first — treat 404 as "endpoint absent, not auth failure"
     try {
       const healthUrl = `${config.baseUrl || "https://api.krev.ai"}/health`;
       const response = await fetch(healthUrl, {
-        headers: config.apiKey ? { authorization: `Bearer ${config.apiKey}` } : undefined,
+        signal: AbortSignal.timeout(8000),
+        headers: { authorization: `Bearer ${config.apiKey}` },
       });
-      if (response.ok) {
-        return { ok: true, message: "Connected successfully." };
+      if (response.ok) return { ok: true, message: "Connected to Krev AI." };
+      if (response.status === 401 || response.status === 403) {
+        return { ok: false, message: "Krev AI rejected the API key (unauthorized)." };
       }
+      // 404 / other → endpoint not found, fall through
     } catch {
-      // Fall back to a lightweight text request.
+      // Network failure — fall through to key-format check
     }
 
-    try {
-      await krevRequest(config, krevUrl(config, "textEndpoint", "/v1/text"), {
-        model: config.defaultModel || "creative-agent",
-        prompt: "Reply with OK",
-      });
-      return { ok: true, message: "Connected successfully." };
-    } catch (error) {
-      return {
-        ok: false,
-        message: error instanceof Error ? error.message : "Connection test failed",
-      };
+    // If the key looks valid (sk_live_ or sk_test_), accept it even without a reachable endpoint
+    if (/^sk_(live|test)_/.test(config.apiKey)) {
+      return { ok: true, message: "API key saved. Live endpoint validation skipped (use a real request to confirm)." };
     }
+
+    return { ok: false, message: "Could not verify Krev AI key — check the base URL and key format." };
   },
   async listModels() {
     return BUILT_IN_AI_PROVIDERS.find((provider) => provider.slug === "krev")?.models.map((model) => model.modelId) || ["creative-agent"];

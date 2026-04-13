@@ -191,6 +191,13 @@ export default function AIAdminPanel() {
   const saveProvider = async (providerId: number) => {
     const draft = providerDrafts[providerId];
     try {
+      // Only include endpoint settings that have actual values — an empty object
+      // would overwrite existing endpoint config stored in the DB.
+      const endpointSettings: Record<string, string> = {};
+      if (draft.textEndpoint) endpointSettings.textEndpoint = String(draft.textEndpoint);
+      if (draft.imageEndpoint) endpointSettings.imageEndpoint = String(draft.imageEndpoint);
+      if (draft.videoEndpoint) endpointSettings.videoEndpoint = String(draft.videoEndpoint);
+
       const response = await fetch(`/api/settings/ai/providers/${providerId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -200,11 +207,7 @@ export default function AIAdminPanel() {
           defaultModel: draft.defaultModel || null,
           baseUrl: draft.baseUrl || null,
           apiKey: draft.apiKey || undefined,
-          settings: {
-            textEndpoint: draft.textEndpoint || undefined,
-            imageEndpoint: draft.imageEndpoint || undefined,
-            videoEndpoint: draft.videoEndpoint || undefined,
-          },
+          ...(Object.keys(endpointSettings).length > 0 ? { settings: endpointSettings } : {}),
         }),
       });
       const data = await response.json();

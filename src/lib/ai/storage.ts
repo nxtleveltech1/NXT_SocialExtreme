@@ -189,7 +189,7 @@ export async function listProvidersWithSecrets(ownerUserId: string) {
     .leftJoin(aiProviderCredentials, eq(aiProviderCredentials.providerId, aiProviders.id))
     .where(eq(aiProviders.ownerUserId, ownerUserId));
 
-  return rows.map(({ provider, credential }) => {
+  const mapped = rows.map(({ provider, credential }) => {
     const envSecret = envSecretForProvider(provider.slug as ProviderSlug);
     const secret = credential?.secretEnc ? decryptSecret(credential.secretEnc) : undefined;
     const secretSource = secret ? "credential" : envSecret.source;
@@ -227,6 +227,21 @@ export async function listProvidersWithSecrets(ownerUserId: string) {
       resolved,
     };
   });
+
+  // Deduplicate by slug: prefer the row that has a DB credential, then lowest id.
+  const bySlug = new Map<string, typeof mapped[number]>();
+  for (const row of mapped) {
+    const existing = bySlug.get(row.slug);
+    if (!existing) {
+      bySlug.set(row.slug, row);
+    } else {
+      const hasCredential = row.credential.id !== null;
+      const existingHasCredential = existing.credential.id !== null;
+      if (hasCredential && !existingHasCredential) bySlug.set(row.slug, row);
+      else if (!hasCredential && !existingHasCredential && row.id < existing.id) bySlug.set(row.slug, row);
+    }
+  }
+  return Array.from(bySlug.values());
 }
 
 export async function getResolvedProvider(ownerUserId: string, providerId: number) {

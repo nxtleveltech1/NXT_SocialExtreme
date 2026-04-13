@@ -167,13 +167,23 @@ export async function saveProviderSettings(
     await upsertProviderCredential(ownerUserId, providerId, payload.apiKey, payload.label);
   }
 
-  await updateProviderConfig(ownerUserId, providerId, {
+  const configUpdate: Parameters<typeof updateProviderConfig>[2] = {
     enabled: payload.enabled,
     displayName: payload.displayName,
     defaultModel: payload.defaultModel,
     baseUrl: payload.baseUrl,
-    settings: payload.settings,
-  });
+  };
+
+  // Merge incoming settings with whatever is already stored so that omitted
+  // endpoint fields (empty strings → stripped by JSON.stringify) don't wipe
+  // the values the user saved previously.
+  if (payload.settings && Object.keys(payload.settings).length > 0) {
+    const existing = await getResolvedProvider(ownerUserId, providerId);
+    const existingSettings = (existing?.settings as Record<string, unknown>) || {};
+    configUpdate.settings = { ...existingSettings, ...payload.settings };
+  }
+
+  await updateProviderConfig(ownerUserId, providerId, configUpdate);
 }
 
 export async function testProviderConnection(ownerUserId: string, providerId: number) {

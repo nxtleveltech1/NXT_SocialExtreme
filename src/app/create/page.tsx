@@ -52,7 +52,17 @@ export default function CreatePostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAIGenerated = (newContent: string, hashtags: string[]) => {
-    setContent(`${newContent}\n\n${hashtags.join(' ')}`);
+    if (newContent && hashtags.length) {
+      setContent(`${newContent}\n\n${hashtags.join(' ')}`);
+      return;
+    }
+    if (newContent) {
+      setContent(newContent);
+      return;
+    }
+    if (hashtags.length) {
+      setContent((current) => `${current}${current ? "\n\n" : ""}${hashtags.join(" ")}`);
+    }
   };
 
   useEffect(() => {
@@ -109,8 +119,8 @@ export default function CreatePostPage() {
       setScheduleOpen(false);
       setScheduledAtLocal("");
       toast.success(opts.status === "draft" ? "Draft saved." : "Post scheduled successfully!");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to save post");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to save post");
     } finally {
       setIsSubmitting(false);
     }
@@ -186,7 +196,8 @@ export default function CreatePostPage() {
             {/* AI Generator */}
             <AIContentGenerator 
               platform={selectedPlatform.name} 
-              onGenerate={handleAIGenerated} 
+              onGenerate={handleAIGenerated}
+              onMediaGenerate={(url) => setMediaUrl(url)}
             />
 
             {/* Content Input */}

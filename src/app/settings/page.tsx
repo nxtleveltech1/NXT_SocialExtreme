@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { 
-  User, 
   Bell, 
   Lock, 
   Globe, 
@@ -15,9 +14,11 @@ import {
   Mail,
   Phone,
   Store,
-  Wallet
+  Wallet,
+  Bot
 } from "lucide-react";
 import { toast } from "sonner";
+import AIAdminPanel from "@/components/settings/AIAdminPanel";
 
 const sections = [
   { id: 'profile', name: 'Business Profile', icon: Building2 },
@@ -25,6 +26,7 @@ const sections = [
   { id: 'security', name: 'Security & Access', icon: Lock },
   { id: 'billing', name: 'Billing & Plans', icon: CreditCard },
   { id: 'localization', name: 'SA Localization', icon: Globe },
+  { id: 'ai', name: 'AI Providers', icon: Bot },
 ];
 
 export default function SettingsPage() {
@@ -263,6 +265,21 @@ export default function SettingsPage() {
                     </select>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeSection === 'ai' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">AI Providers & Operations</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Manage providers, keys, routing, budgets, reconciliation, and Content Studio defaults.
+                    </p>
+                  </div>
+                </div>
+
+                <AIAdminPanel />
               </div>
             )}
 

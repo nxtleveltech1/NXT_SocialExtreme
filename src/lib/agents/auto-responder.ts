@@ -6,9 +6,10 @@
  */
 
 import { db } from "@/db/db";
-import { messages, conversations, channels } from "@/db/schema";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { messages, conversations } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import OpenAI from "openai";
+import { generateStructuredWithAI, generateTextWithAI } from "@/lib/ai/service";
 
 const openrouter = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY || "",
@@ -31,6 +32,7 @@ export interface ClassifiedMessage {
 }
 
 interface AgentConfig {
+  ownerUserId?: string;
   autoReplyEnabled: boolean;
   confidenceThreshold: number; // 0-100
   businessName: string;
@@ -51,8 +53,26 @@ const DEFAULT_CONFIG: AgentConfig = {
  */
 export async function classifyMessageIntent(
   messageContent: string,
-  conversationHistory: string[] = []
+  conversationHistory: string[] = [],
+  ownerUserId?: string
 ): Promise<{ intent: MessageIntent; confidence: number }> {
+  if (ownerUserId) {
+    try {
+      const result = await generateStructuredWithAI<{ intent: MessageIntent; confidence: number }>(ownerUserId, {
+        routeKey: "agents.reply",
+        prompt: `Conversation history:\n${conversationHistory.join("\n")}\n\nClassify the latest message into sales, support, general, spam, or urgent. Latest message: ${messageContent}`,
+      });
+      if (result.object.intent) {
+        return {
+          intent: result.object.intent,
+          confidence: result.object.confidence || 70,
+        };
+      }
+    } catch (error) {
+      console.error("AI service classification failed:", error);
+    }
+  }
+
   if (!process.env.OPENROUTER_API_KEY) {
     // Fallback classification using keywords
     return keywordBasedClassification(messageContent);
@@ -104,6 +124,26 @@ export async function generateResponse(
   intent: MessageIntent,
   config: AgentConfig = DEFAULT_CONFIG
 ): Promise<string> {
+  if (config.ownerUserId) {
+    try {
+      const systemPrompts: Record<MessageIntent, string> = {
+        sales: `You are a friendly sales assistant for ${config.businessName}. ${config.businessDescription}. Help the customer with pricing and product information. Be enthusiastic but not pushy. Keep responses concise (2-3 sentences).`,
+        support: `You are a helpful support agent for ${config.businessName}. Acknowledge the customer's issue, apologize for inconvenience, and offer to help. If complex, suggest contacting ${config.supportEmail || "support"}. Keep responses concise.`,
+        general: `You are a friendly representative for ${config.businessName}. Respond warmly and helpfully. Keep responses brief and professional.`,
+        spam: `Politely decline and redirect to legitimate business inquiries.`,
+        urgent: `You are an urgent response agent for ${config.businessName}. Acknowledge the urgency, assure immediate attention, and provide next steps. Be calm and reassuring.`,
+      };
+      const result = await generateTextWithAI(config.ownerUserId, {
+        routeKey: "agents.reply",
+        prompt: messageContent,
+        systemPrompt: systemPrompts[intent],
+      });
+      if (result.text) return result.text;
+    } catch (error) {
+      console.error("AI service response generation failed:", error);
+    }
+  }
+
   if (!process.env.OPENROUTER_API_KEY) {
     return getTemplateResponse(intent, config);
   }
@@ -177,7 +217,7 @@ export async function processUnreadMessages(
       .filter(Boolean);
 
     // Classify intent
-    const { intent, confidence } = await classifyMessageIntent(messageContent, history);
+    const { intent, confidence } = await classifyMessageIntent(messageContent, history, config.ownerUserId);
 
     // Generate response
     const suggestedResponse = await generateResponse(messageContent, intent, config);

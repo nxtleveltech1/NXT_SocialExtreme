@@ -5,10 +5,10 @@ import {
   generatePostDraft,
   saveDraftAsPost,
   DEFAULT_CONFIG,
-  type ContentEngineConfig,
   type ContentTopic,
 } from "@/lib/agents/content-engine";
 import { requireAuth } from "@/lib/api-auth";
+import { getCurrentAIUserId } from "@/lib/ai/service";
 
 export const runtime = "nodejs";
 
@@ -19,12 +19,16 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   try {
     await requireAuth();
+    const ownerUserId = await getCurrentAIUserId();
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get("mode") || "ideas";
     const topicId = searchParams.get("topic");
 
     if (mode === "weekly") {
-      const drafts = await generateWeeklyContent();
+      const drafts = await generateWeeklyContent({
+        ...DEFAULT_CONFIG,
+        ownerUserId,
+      });
       return NextResponse.json({
         mode: "weekly",
         count: drafts.length,
@@ -37,7 +41,10 @@ export async function GET(req: NextRequest) {
       ? DEFAULT_CONFIG.topics.find((t) => t.id === topicId) || DEFAULT_CONFIG.topics[0]
       : DEFAULT_CONFIG.topics[0];
 
-    const ideas = await generateContentIdeas(topic);
+    const ideas = await generateContentIdeas(topic, {
+      ...DEFAULT_CONFIG,
+      ownerUserId,
+    });
 
     return NextResponse.json({
       mode: "ideas",
@@ -60,8 +67,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
+    const ownerUserId = await getCurrentAIUserId();
     const body = await req.json();
-    const { action, idea, topicId, platform, draftId, channelId, draft } = body;
+    const { action, idea, topicId, platform, channelId, draft } = body;
 
     if (action === "generate-draft") {
       if (!idea || !platform) {
@@ -75,7 +83,10 @@ export async function POST(req: NextRequest) {
         ? DEFAULT_CONFIG.topics.find((t) => t.id === topicId) || DEFAULT_CONFIG.topics[0]
         : DEFAULT_CONFIG.topics[0];
 
-      const generatedDraft = await generatePostDraft(idea, topic, platform);
+      const generatedDraft = await generatePostDraft(idea, topic, platform, {
+        ...DEFAULT_CONFIG,
+        ownerUserId,
+      });
 
       return NextResponse.json({
         action: "generate-draft",

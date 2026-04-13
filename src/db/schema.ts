@@ -831,3 +831,267 @@ export const conversionEvents = pgTable("conversion_events", {
   index("conversion_events_event_name_idx").on(t.eventName),
 ]));
 
+/**
+ * AI Provider Configurations
+ */
+export const aiProviders = pgTable("ai_providers", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  slug: text("slug").notNull(),
+  displayName: text("display_name").notNull(),
+  adapter: text("adapter").notNull(),
+  enabled: boolean("enabled").default(false).notNull(),
+  isBuiltIn: boolean("is_built_in").default(true).notNull(),
+  baseUrl: text("base_url"),
+  status: text("status").default("inactive").notNull(),
+  defaultModel: text("default_model"),
+  settings: jsonb("settings"),
+  capabilities: jsonb("capabilities"),
+  lastValidatedAt: timestamp("last_validated_at"),
+  lastValidationStatus: text("last_validation_status"),
+  lastValidationError: text("last_validation_error"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("ai_providers_owner_idx").on(t.ownerUserId),
+  index("ai_providers_slug_idx").on(t.slug),
+  index("ai_providers_enabled_idx").on(t.enabled),
+  uniqueIndex("ai_providers_owner_slug_uniq").on(t.ownerUserId, t.slug),
+]));
+
+/**
+ * Encrypted provider credentials.
+ */
+export const aiProviderCredentials = pgTable("ai_provider_credentials", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id")
+    .notNull()
+    .references(() => aiProviders.id, { onDelete: "cascade" }),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  credentialType: text("credential_type").default("api_key").notNull(),
+  label: text("label"),
+  secretEnc: text("secret_enc"),
+  last4: text("last4"),
+  isEnvBacked: boolean("is_env_backed").default(false).notNull(),
+  metadata: jsonb("metadata"),
+  rotatedAt: timestamp("rotated_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("ai_provider_credentials_provider_idx").on(t.providerId),
+  index("ai_provider_credentials_owner_idx").on(t.ownerUserId),
+  uniqueIndex("ai_provider_credentials_provider_uniq").on(t.providerId),
+]));
+
+/**
+ * AI model catalog per provider.
+ */
+export const aiModels = pgTable("ai_models", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id")
+    .notNull()
+    .references(() => aiProviders.id, { onDelete: "cascade" }),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  modelId: text("model_id").notNull(),
+  displayName: text("display_name").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  capabilities: jsonb("capabilities"),
+  pricing: jsonb("pricing"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("ai_models_provider_idx").on(t.providerId),
+  index("ai_models_owner_idx").on(t.ownerUserId),
+  uniqueIndex("ai_models_provider_model_uniq").on(t.providerId, t.modelId),
+]));
+
+/**
+ * Per-feature AI routing profiles.
+ */
+export const aiRoutingProfiles = pgTable("ai_routing_profiles", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  routeKey: text("route_key").notNull(),
+  primaryProviderId: integer("primary_provider_id").references(() => aiProviders.id),
+  preferredModel: text("preferred_model"),
+  fallbackProviderIds: integer("fallback_provider_ids").array(),
+  enabled: boolean("enabled").default(true).notNull(),
+  settings: jsonb("settings"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("ai_routing_profiles_owner_idx").on(t.ownerUserId),
+  uniqueIndex("ai_routing_profiles_owner_route_uniq").on(t.ownerUserId, t.routeKey),
+]));
+
+/**
+ * Saved prompt templates for studio and automation flows.
+ */
+export const aiPromptTemplates = pgTable("ai_prompt_templates", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  useCase: text("use_case").notNull(),
+  systemPrompt: text("system_prompt"),
+  userPromptTemplate: text("user_prompt_template").notNull(),
+  settings: jsonb("settings"),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("ai_prompt_templates_owner_idx").on(t.ownerUserId),
+  index("ai_prompt_templates_use_case_idx").on(t.useCase),
+  uniqueIndex("ai_prompt_templates_owner_slug_uniq").on(t.ownerUserId, t.slug),
+]));
+
+/**
+ * Brand context for AI generations.
+ */
+export const aiBrandProfiles = pgTable("ai_brand_profiles", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  name: text("name").notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  businessName: text("business_name").notNull(),
+  businessDescription: text("business_description"),
+  targetAudience: text("target_audience"),
+  brandVoice: text("brand_voice"),
+  styleGuide: jsonb("style_guide"),
+  bannedTerms: text("banned_terms").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("ai_brand_profiles_owner_idx").on(t.ownerUserId),
+]));
+
+/**
+ * AI request audit trail.
+ */
+export const aiRequestLogs = pgTable("ai_request_logs", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  providerId: integer("provider_id").references(() => aiProviders.id),
+  routeKey: text("route_key"),
+  feature: text("feature"),
+  requestType: text("request_type").notNull(),
+  model: text("model"),
+  status: text("status").default("success").notNull(),
+  requestPreview: text("request_preview"),
+  responsePreview: text("response_preview"),
+  latencyMs: integer("latency_ms"),
+  promptTokens: integer("prompt_tokens").default(0),
+  completionTokens: integer("completion_tokens").default(0),
+  estimatedCostMicros: integer("estimated_cost_micros").default(0),
+  actualCostMicros: integer("actual_cost_micros"),
+  currency: text("currency").default("USD"),
+  error: text("error"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ([
+  index("ai_request_logs_owner_idx").on(t.ownerUserId),
+  index("ai_request_logs_provider_idx").on(t.providerId),
+  index("ai_request_logs_route_idx").on(t.routeKey),
+  index("ai_request_logs_created_at_idx").on(t.createdAt),
+]));
+
+/**
+ * Normalized AI usage events for budgeting and reconciliation.
+ */
+export const aiUsageEvents = pgTable("ai_usage_events", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  requestLogId: integer("request_log_id").references(() => aiRequestLogs.id, { onDelete: "cascade" }),
+  providerId: integer("provider_id").references(() => aiProviders.id),
+  routeKey: text("route_key"),
+  model: text("model"),
+  usageDate: timestamp("usage_date").defaultNow().notNull(),
+  inputTokens: integer("input_tokens").default(0).notNull(),
+  outputTokens: integer("output_tokens").default(0).notNull(),
+  imageCount: integer("image_count").default(0).notNull(),
+  videoSeconds: integer("video_seconds").default(0).notNull(),
+  estimatedCostMicros: integer("estimated_cost_micros").default(0).notNull(),
+  actualCostMicros: integer("actual_cost_micros"),
+  currency: text("currency").default("USD"),
+  status: text("status").default("recorded").notNull(),
+  metadata: jsonb("metadata"),
+}, (t) => ([
+  index("ai_usage_events_owner_idx").on(t.ownerUserId),
+  index("ai_usage_events_provider_idx").on(t.providerId),
+  index("ai_usage_events_usage_date_idx").on(t.usageDate),
+]));
+
+/**
+ * Budget policies for AI provider usage.
+ */
+export const aiBudgetPolicies = pgTable("ai_budget_policies", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  providerId: integer("provider_id").references(() => aiProviders.id),
+  routeKey: text("route_key"),
+  period: text("period").default("monthly").notNull(),
+  limitMicros: integer("limit_micros").notNull(),
+  warningThresholdPercent: integer("warning_threshold_percent").default(80).notNull(),
+  hardStop: boolean("hard_stop").default(false).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => ([
+  index("ai_budget_policies_owner_idx").on(t.ownerUserId),
+  index("ai_budget_policies_provider_idx").on(t.providerId),
+]));
+
+/**
+ * Monthly reconciliation runs imported from provider billing.
+ */
+export const aiReconciliationRuns = pgTable("ai_reconciliation_runs", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  workspaceId: text("workspace_id"),
+  providerSlug: text("provider_slug").notNull(),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  importedTotalMicros: integer("imported_total_micros").default(0).notNull(),
+  estimatedTotalMicros: integer("estimated_total_micros").default(0).notNull(),
+  varianceMicros: integer("variance_micros").default(0).notNull(),
+  source: text("source").default("manual_import").notNull(),
+  status: text("status").default("completed").notNull(),
+  notes: text("notes"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ([
+  index("ai_reconciliation_runs_owner_idx").on(t.ownerUserId),
+  index("ai_reconciliation_runs_provider_idx").on(t.providerSlug),
+]));
+
+/**
+ * Manual reconciliation adjustments tied to a run.
+ */
+export const aiReconciliationAdjustments = pgTable("ai_reconciliation_adjustments", {
+  id: serial("id").primaryKey(),
+  runId: integer("run_id")
+    .notNull()
+    .references(() => aiReconciliationRuns.id, { onDelete: "cascade" }),
+  ownerUserId: text("owner_user_id").notNull(),
+  requestLogId: integer("request_log_id").references(() => aiRequestLogs.id),
+  usageEventId: integer("usage_event_id").references(() => aiUsageEvents.id),
+  amountMicros: integer("amount_micros").notNull(),
+  reason: text("reason").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ([
+  index("ai_reconciliation_adjustments_run_idx").on(t.runId),
+  index("ai_reconciliation_adjustments_owner_idx").on(t.ownerUserId),
+]));

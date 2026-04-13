@@ -11,6 +11,7 @@ import { db } from "@/db/db";
 import { conversations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/api-auth";
+import { getCurrentAIUserId } from "@/lib/ai/service";
 
 export const runtime = "nodejs";
 
@@ -21,11 +22,13 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   try {
     await requireAuth();
+    const ownerUserId = await getCurrentAIUserId();
     const { searchParams } = new URL(req.url);
     const autoReply = searchParams.get("autoReply") === "true";
 
     const config: AgentConfig = {
       ...DEFAULT_CONFIG,
+      ownerUserId,
       autoReplyEnabled: autoReply,
     };
 
@@ -51,6 +54,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
+    const ownerUserId = await getCurrentAIUserId();
     const body = await req.json();
     const { conversationId, messageContent, sendReply, customResponse } = body;
 
@@ -62,10 +66,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Classify the message
-    const { intent, confidence } = await classifyMessageIntent(messageContent);
+    const { intent, confidence } = await classifyMessageIntent(messageContent, [], ownerUserId);
 
     // Generate response
-    const suggestedResponse = await generateResponse(messageContent, intent);
+    const suggestedResponse = await generateResponse(messageContent, intent, {
+      ...DEFAULT_CONFIG,
+      ownerUserId,
+    });
 
     // If sendReply is true, actually send the message
     if (sendReply && conversationId) {

@@ -9,6 +9,7 @@ import { db } from "@/db/db";
 import { posts, channels } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import OpenAI from "openai";
+import { generateStructuredWithAI } from "@/lib/ai/service";
 
 const openrouter = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY || "",
@@ -41,6 +42,7 @@ export interface GeneratedDraft {
 }
 
 export interface ContentEngineConfig {
+  ownerUserId?: string;
   businessName: string;
   businessDescription: string;
   industry: string;
@@ -95,6 +97,30 @@ export async function generateContentIdeas(
   config: ContentEngineConfig = DEFAULT_CONFIG,
   count: number = 3
 ): Promise<string[]> {
+  if (config.ownerUserId) {
+    try {
+      const result = await generateStructuredWithAI<{ ideas: string[] }>(config.ownerUserId, {
+        routeKey: "agents.content",
+        prompt: [
+          `Business: ${config.businessName}`,
+          `Description: ${config.businessDescription}`,
+          `Industry: ${config.industry}`,
+          `Target audience: ${config.targetAudience}`,
+          `Brand voice: ${config.brandVoice}`,
+          `Topic: ${topic.name}`,
+          `Keywords: ${topic.keywords.join(", ")}`,
+          `Tone: ${topic.tone}`,
+          `Generate ${count} unique content ideas as JSON with an 'ideas' array.`,
+        ].join("\n"),
+      });
+      if (Array.isArray(result.object.ideas) && result.object.ideas.length > 0) {
+        return result.object.ideas;
+      }
+    } catch (error) {
+      console.error("AI service content ideas failed:", error);
+    }
+  }
+
   if (!process.env.OPENROUTER_API_KEY) {
     return getDefaultIdeas(topic);
   }
@@ -142,6 +168,42 @@ export async function generatePostDraft(
   config: ContentEngineConfig = DEFAULT_CONFIG
 ): Promise<GeneratedDraft> {
   const draftId = `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  if (config.ownerUserId) {
+    try {
+      const result = await generateStructuredWithAI<{
+        content: string;
+        hashtags: string[];
+        suggestedMediaType: "image" | "video" | "carousel" | "text";
+        mediaPrompt?: string;
+        confidence?: number;
+      }>(config.ownerUserId, {
+        routeKey: "agents.content",
+        prompt: [
+          `Business: ${config.businessName}`,
+          `Brand voice: ${config.brandVoice}`,
+          `Platform: ${platform}`,
+          `Topic: ${topic.name}`,
+          `Idea: ${idea}`,
+          "Return JSON with content, hashtags, suggestedMediaType, mediaPrompt, and confidence.",
+        ].join("\n"),
+      });
+
+      return {
+        id: draftId,
+        topic: topic.name,
+        platform,
+        content: result.object.content || idea,
+        hashtags: result.object.hashtags || [],
+        suggestedMediaType: result.object.suggestedMediaType || "image",
+        mediaPrompt: result.object.mediaPrompt,
+        scheduleSuggestion: getNextScheduleTime(config),
+        confidence: result.object.confidence || 75,
+      };
+    } catch (error) {
+      console.error("AI service post draft failed:", error);
+    }
+  }
 
   if (!process.env.OPENROUTER_API_KEY) {
     return {

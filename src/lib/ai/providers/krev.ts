@@ -21,6 +21,8 @@ function estimate(config: ProviderResolvedConfig, usage: NormalizedUsage, model?
     usage.videoSeconds * (pricing.videoMicrosPerSecond || 0);
 }
 
+const KREV_TIMEOUT_MS = 90_000; // Krev media generation can be slow
+
 async function krevRequest(config: ProviderResolvedConfig, endpointUrl: string, body: Record<string, unknown>) {
   if (!config.apiKey) throw new Error(`No API key configured for ${config.displayName}`);
 
@@ -31,10 +33,14 @@ async function krevRequest(config: ProviderResolvedConfig, endpointUrl: string, 
       authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(KREV_TIMEOUT_MS),
   });
 
   if (!response.ok) {
-    throw new Error(`Krev request failed with status ${response.status}`);
+    let errorBody = "";
+    try { errorBody = await response.text(); } catch { /* ignore */ }
+    const detail = errorBody ? ` — ${errorBody.slice(0, 300)}` : "";
+    throw new Error(`Krev request failed with status ${response.status}${detail}`);
   }
 
   return response.json();

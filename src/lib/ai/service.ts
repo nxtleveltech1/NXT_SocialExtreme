@@ -29,6 +29,25 @@ function clampPreview(value: string | undefined, max = 400) {
   return value.length > max ? `${value.slice(0, max)}...` : value;
 }
 
+/** Returns true for errors that are likely transient and worth retrying on the same provider. */
+function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes("status 429") ||
+    msg.includes("status 503") ||
+    msg.includes("status 502") ||
+    msg.includes("rate limit") ||
+    msg.includes("timed out") ||
+    msg.includes("timeout") ||
+    msg.includes("econnreset") ||
+    msg.includes("socket hang up")
+  );
+}
+
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 2_000;
+
 async function buildPromptContext(ownerUserId: string, request: AITextRequest) {
   let brandContext = "";
   let template = null as typeof aiPromptTemplates.$inferSelect | null;
@@ -108,17 +127,50 @@ async function executeWithFallback<T extends { usage: { estimatedCostMicros: num
 ) {
   const { provider, fallbacks } = await resolveProviderForRoute(ownerUserId, routeKey, providerId);
   const candidates = [provider, ...fallbacks];
-  let lastError: Error | null = null;
+  const errors: { provider: string; slug: string; error: string; durationMs: number }[] = [];
 
   for (const candidate of candidates) {
-    try {
-      return await executor(candidate);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("AI provider request failed");
+    // Allow one retry for transient errors on the same provider before falling back
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const attemptStart = Date.now();
+      try {
+        const result = await executor(candidate);
+        if (errors.length > 0) {
+          console.warn(
+            `[AI:${routeKey}] Succeeded on provider "${candidate.displayName}" (${candidate.slug}) after ${errors.length} failed attempt(s):`,
+            errors.map((e) => `${e.provider} (${e.slug}): ${e.error} [${e.durationMs}ms]`).join("; ")
+          );
+        }
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown AI provider error";
+        const durationMs = Date.now() - attemptStart;
+        errors.push({
+          provider: candidate.displayName,
+          slug: candidate.slug,
+          error: errorMessage,
+          durationMs,
+        });
+        console.error(
+          `[AI:${routeKey}] Provider "${candidate.displayName}" (${candidate.slug}) attempt ${attempt + 1} failed after ${durationMs}ms:`,
+          errorMessage
+        );
+
+        // Only retry on the same provider for transient errors, and only if we have retries left
+        if (attempt < MAX_RETRIES && isRetryableError(error)) {
+          console.info(`[AI:${routeKey}] Retrying "${candidate.displayName}" in ${RETRY_DELAY_MS}ms (transient error)...`);
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+          continue;
+        }
+        break; // Non-retryable or out of retries — move to next provider
+      }
     }
   }
 
-  throw lastError || new Error("No provider available");
+  const summary = errors.map((e) => `${e.provider} (${e.slug}): ${e.error}`).join("; ");
+  throw new Error(
+    `All AI providers failed for route "${routeKey}". Tried ${errors.length} provider(s): ${summary}`
+  );
 }
 
 export async function listAIAdminState(ownerUserId: string) {

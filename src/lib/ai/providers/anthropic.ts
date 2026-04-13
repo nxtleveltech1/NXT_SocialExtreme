@@ -14,6 +14,8 @@ function estimate(config: ProviderResolvedConfig, usage: NormalizedUsage, model?
     Math.ceil((usage.outputTokens / 1000) * (pricing.outputMicrosPer1k || 0));
 }
 
+const ANTHROPIC_TIMEOUT_MS = 60_000;
+
 async function callAnthropic(config: ProviderResolvedConfig, request: AITextRequest, forceJson = false) {
   if (!config.apiKey) throw new Error(`No API key configured for ${config.displayName}`);
 
@@ -33,10 +35,14 @@ async function callAnthropic(config: ProviderResolvedConfig, request: AITextRequ
         : request.systemPrompt,
       messages: [{ role: "user", content: request.prompt }],
     }),
+    signal: AbortSignal.timeout(ANTHROPIC_TIMEOUT_MS),
   });
 
   if (!response.ok) {
-    throw new Error(`Anthropic request failed with status ${response.status}`);
+    let errorBody = "";
+    try { errorBody = await response.text(); } catch { /* ignore */ }
+    const detail = errorBody ? ` — ${errorBody.slice(0, 300)}` : "";
+    throw new Error(`Anthropic request failed with status ${response.status}${detail}`);
   }
 
   const payload = await response.json();
@@ -89,9 +95,22 @@ export const anthropicAdapter: AIProviderAdapter = {
   },
   async generateStructured<T = Record<string, unknown>>(config: ProviderResolvedConfig, request: AITextRequest) {
     const { payload, model, text, usage } = await callAnthropic(config, request, true);
+    let object: T;
+    try {
+      object = JSON.parse(text || "{}") as T;
+    } catch (parseError) {
+      console.error(
+        `[AI:anthropic] Failed to parse structured JSON from model "${model}". Raw text (first 500 chars):`,
+        (text || "").slice(0, 500)
+      );
+      throw new Error(
+        `Anthropic returned malformed JSON. Model: ${model}. ` +
+        `Parse error: ${parseError instanceof Error ? parseError.message : "unknown"}`
+      );
+    }
     return {
       text,
-      object: JSON.parse(text || "{}") as T,
+      object,
       providerId: config.id,
       providerSlug: "anthropic",
       model,

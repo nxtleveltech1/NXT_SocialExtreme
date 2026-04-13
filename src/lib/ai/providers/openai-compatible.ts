@@ -7,6 +7,8 @@ function getProviderCatalog(slug: ProviderResolvedConfig["slug"]) {
   return BUILT_IN_AI_PROVIDERS.find((provider) => provider.slug === slug);
 }
 
+const OPENAI_TIMEOUT_MS = 60_000;
+
 function getClient(config: ProviderResolvedConfig) {
   if (!config.apiKey) {
     throw new Error(`No API key configured for ${config.displayName}`);
@@ -15,6 +17,7 @@ function getClient(config: ProviderResolvedConfig) {
   return new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseUrl || undefined,
+    timeout: OPENAI_TIMEOUT_MS,
     defaultHeaders: {
       "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
       "X-Title": "NXT Social Extreme",
@@ -130,7 +133,19 @@ export function createOpenAICompatibleAdapter(
         },
       };
       const { completion, model, text, usage } = await generateTextBase(config, nextRequest);
-      const object = JSON.parse(text || "{}") as T;
+      let object: T;
+      try {
+        object = JSON.parse(text || "{}") as T;
+      } catch (parseError) {
+        console.error(
+          `[AI:openai-compatible] Failed to parse structured JSON from model "${model}". Raw text (first 500 chars):`,
+          (text || "").slice(0, 500)
+        );
+        throw new Error(
+          `AI provider "${config.displayName}" returned malformed JSON. Model: ${model}. ` +
+          `Parse error: ${parseError instanceof Error ? parseError.message : "unknown"}`
+        );
+      }
       return {
         text,
         object,

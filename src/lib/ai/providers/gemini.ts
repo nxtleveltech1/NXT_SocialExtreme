@@ -14,6 +14,8 @@ function estimate(config: ProviderResolvedConfig, usage: NormalizedUsage, model?
     Math.ceil((usage.outputTokens / 1000) * (pricing.outputMicrosPer1k || 0));
 }
 
+const GEMINI_TIMEOUT_MS = 60_000;
+
 async function callGemini(config: ProviderResolvedConfig, request: AITextRequest, forceJson = false) {
   if (!config.apiKey) throw new Error(`No API key configured for ${config.displayName}`);
 
@@ -44,10 +46,14 @@ async function callGemini(config: ProviderResolvedConfig, request: AITextRequest
         responseMimeType: forceJson ? "application/json" : undefined,
       },
     }),
+    signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini request failed with status ${response.status}`);
+    let errorBody = "";
+    try { errorBody = await response.text(); } catch { /* ignore */ }
+    const detail = errorBody ? ` — ${errorBody.slice(0, 300)}` : "";
+    throw new Error(`Gemini request failed with status ${response.status}${detail}`);
   }
 
   const payload = await response.json();
@@ -96,9 +102,22 @@ export const geminiAdapter: AIProviderAdapter = {
   },
   async generateStructured<T = Record<string, unknown>>(config: ProviderResolvedConfig, request: AITextRequest) {
     const { payload, model, text, usage } = await callGemini(config, request, true);
+    let object: T;
+    try {
+      object = JSON.parse(text || "{}") as T;
+    } catch (parseError) {
+      console.error(
+        `[AI:gemini] Failed to parse structured JSON from model "${model}". Raw text (first 500 chars):`,
+        (text || "").slice(0, 500)
+      );
+      throw new Error(
+        `Gemini returned malformed JSON. Model: ${model}. ` +
+        `Parse error: ${parseError instanceof Error ? parseError.message : "unknown"}`
+      );
+    }
     return {
       text,
-      object: JSON.parse(text || "{}") as T,
+      object,
       providerId: config.id,
       providerSlug: "gemini",
       model,

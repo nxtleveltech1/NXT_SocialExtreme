@@ -28,9 +28,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error("AI text POST error:", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid request payload", details: error.issues },
+        { status: 400 }
+      );
+    }
+    const message = error instanceof Error ? error.message : "Failed to generate AI text";
+    const isTimeout = message.includes("timed out") || message.includes("aborted");
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate AI text" },
-      { status: 500 }
+      { error: message },
+      { status: isTimeout ? 504 : 500 }
     );
   }
 }

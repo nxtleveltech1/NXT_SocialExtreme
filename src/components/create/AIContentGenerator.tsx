@@ -65,9 +65,8 @@ export default function AIContentGenerator({ platform, onGenerate, onMediaGenera
         setPromptTemplates(providersData.promptTemplates || []);
         setBrandProfiles(providersData.brandProfiles || []);
         setModels(modelsData.providers || []);
-        if (enabledProviders[0]) {
-          setProviderId(String(enabledProviders[0].id));
-        }
+        // Default to auto-route so the routing profile handles provider selection.
+        // Krev AI text endpoint returns 404; explicit provider selection disables fallbacks.
       } catch (error) {
         console.error(error);
         toast.error("Failed to load AI studio configuration");

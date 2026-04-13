@@ -21,12 +21,39 @@ export async function POST(req: NextRequest) {
     const ownerUserId = await getCurrentAIUserId();
     const payload = mediaSchema.parse(await req.json());
     const result = await generateMediaWithAI(ownerUserId, payload);
-    return NextResponse.json(result);
+
+    // Normalise: if the provider returned b64_json but no url, convert to a data URI
+    // so downstream consumers always have a usable `url` field.
+    const url =
+      result.url ||
+      (result.b64Json
+        ? `data:${result.mimeType || "image/png"};base64,${result.b64Json}`
+        : undefined);
+
+    if (!url) {
+      console.error("[AI:media] Provider returned neither url nor b64Json", {
+        provider: result.providerSlug,
+        model: result.model,
+      });
+      return NextResponse.json(
+        { error: "AI provider did not return a usable media asset." },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      ...result,
+      url,
+      // Strip large b64 payload from the response to keep it lightweight
+      b64Json: undefined,
+    });
   } catch (error: unknown) {
     console.error("AI media POST error:", error);
+    const message = error instanceof Error ? error.message : "Failed to generate AI media";
+    const isTimeout = message.includes("timed out") || message.includes("aborted");
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate AI media" },
-      { status: 500 }
+      { error: message },
+      { status: isTimeout ? 504 : 500 }
     );
   }
 }

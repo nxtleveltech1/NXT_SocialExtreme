@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/lib/api-auth";
 import { generateStructuredWithAI, getCurrentAIUserId } from "@/lib/ai/service";
+
+export const runtime = "nodejs";
+
+const generateSchema = z.object({
+  prompt: z.string().min(1, "Prompt is required"),
+  platform: z.string().optional(),
+  tone: z.enum(["Professional", "Fun", "Edgy", "Casual", "Bold"]).optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
     const ownerUserId = await getCurrentAIUserId();
-    const { prompt, platform, tone } = await req.json();
-
-    if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
-    }
+    const { prompt, platform, tone } = generateSchema.parse(await req.json());
 
     // Construct system prompt based on tone
     let systemPrompt = "You are a social media expert. Generate engaging content.";
@@ -47,6 +52,14 @@ export async function POST(req: NextRequest) {
 
   } catch (error: unknown) {
     console.error("AI Generation Error:", error);
-    return NextResponse.json({ error: "Failed to generate content" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to generate content";
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid request", details: error.issues },
+        { status: 400 }
+      );
+    }
+    const isTimeout = message.includes("timed out") || message.includes("aborted");
+    return NextResponse.json({ error: message }, { status: isTimeout ? 504 : 500 });
   }
 }

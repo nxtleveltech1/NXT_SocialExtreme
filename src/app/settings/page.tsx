@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Bell, 
-  Lock, 
-  Globe, 
-  CreditCard, 
-  Building2, 
+import {
+  Bell,
+  Lock,
+  Globe,
+  CreditCard,
+  Building2,
   ShieldCheck,
   Save,
   ChevronRight,
@@ -15,10 +15,12 @@ import {
   Phone,
   Store,
   Wallet,
-  Bot
+  Bot,
+  Cable
 } from "lucide-react";
 import { toast } from "sonner";
 import AIAdminPanel from "@/components/settings/AIAdminPanel";
+import IntegrationsPanel from "@/components/settings/IntegrationsPanel";
 
 const sections = [
   { id: 'profile', name: 'Business Profile', icon: Building2 },
@@ -27,6 +29,7 @@ const sections = [
   { id: 'billing', name: 'Billing & Plans', icon: CreditCard },
   { id: 'localization', name: 'SA Localization', icon: Globe },
   { id: 'ai', name: 'AI Providers', icon: Bot },
+  { id: 'integrations', name: 'Integrations', icon: Cable },
 ];
 
 export default function SettingsPage() {
@@ -280,6 +283,20 @@ export default function SettingsPage() {
                 </div>
 
                 <AIAdminPanel />
+              </div>
+            )}
+
+            {activeSection === 'integrations' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Integrations</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Manage Meta, TikTok, and WhatsApp API credentials. Values are encrypted and stored in the database.
+                    </p>
+                  </div>
+                </div>
+                <IntegrationsPanel />
               </div>
             )}
 

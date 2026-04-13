@@ -1095,3 +1095,22 @@ export const aiReconciliationAdjustments = pgTable("ai_reconciliation_adjustment
   index("ai_reconciliation_adjustments_run_idx").on(t.runId),
   index("ai_reconciliation_adjustments_owner_idx").on(t.ownerUserId),
 ]));
+
+/**
+ * Platform integration credentials (Meta, TikTok, WhatsApp, etc.)
+ * Values are encrypted at rest. Non-secret values (e.g. redirect URIs) use isSecret=false.
+ */
+export const platformCredentials = pgTable("platform_credentials", {
+  id: serial("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  platform: text("platform").notNull(),   // "meta" | "tiktok" | "whatsapp"
+  credKey: text("cred_key").notNull(),    // e.g. "app_id", "app_secret"
+  valueEnc: text("value_enc"),            // AES-256-GCM encrypted value
+  isSecret: boolean("is_secret").default(true).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ([
+  uniqueIndex("platform_credentials_owner_platform_key_idx").on(t.ownerUserId, t.platform, t.credKey),
+  index("platform_credentials_owner_idx").on(t.ownerUserId),
+  index("platform_credentials_platform_idx").on(t.platform),
+]));

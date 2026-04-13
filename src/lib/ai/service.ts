@@ -22,7 +22,7 @@ import {
   upsertProviderCredential,
   upsertRoutingProfile,
 } from "@/lib/ai/storage";
-import type { AIMediaRequest, AITextRequest, AIRouteKey, ProviderResolvedConfig } from "@/lib/ai/types";
+import type { AIMediaRequest, AITextRequest, AIRouteKey, ProviderResolvedConfig, AICapabilities } from "@/lib/ai/types";
 
 function clampPreview(value: string | undefined, max = 400) {
   if (!value) return "";
@@ -88,8 +88,18 @@ async function buildPromptContext(ownerUserId: string, request: AITextRequest) {
   };
 }
 
+/** Determine the required capability from a route key (e.g. "studio.media.image" → "image"). */
+function requiredCapability(routeKey: AIRouteKey): keyof AICapabilities | null {
+  if (routeKey === "studio.media.image") return "image";
+  if (routeKey === "studio.media.video") return "video";
+  if (routeKey === "studio.copy" || routeKey === "agents.content" || routeKey === "agents.reply") return "text";
+  return null;
+}
+
 async function resolveProviderForRoute(ownerUserId: string, routeKey: AIRouteKey, providerId?: number) {
   await ensureAIFoundation(ownerUserId);
+  const allProviders = await listProvidersWithSecrets(ownerUserId);
+  const providerById = new Map(allProviders.map((entry) => [entry.id, entry]));
 
   if (providerId) {
     const provider = await getResolvedProvider(ownerUserId, providerId);
@@ -98,24 +108,82 @@ async function resolveProviderForRoute(ownerUserId: string, routeKey: AIRouteKey
   }
 
   const routes = await getRoutingProfiles(ownerUserId);
-  const route = routes.find((entry) => entry.routeKey === routeKey && entry.enabled);
-  if (!route?.primaryProviderId) {
+  const matchingRoutes = routes
+    .filter((entry) => entry.routeKey === routeKey && entry.enabled)
+    .sort((a, b) => {
+      const aTime = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+      const bTime = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+      return bTime - aTime;
+    });
+
+  if (matchingRoutes.length === 0) {
     throw new Error(`No AI routing configured for ${routeKey}`);
+  }
+
+  const capability = requiredCapability(routeKey);
+
+  const route =
+    matchingRoutes.find((candidate) => {
+      if (!candidate.primaryProviderId) return false;
+      const providerEntry = providerById.get(candidate.primaryProviderId);
+      if (!providerEntry) return false;
+      if (!providerEntry.enabled || !providerEntry.resolved.apiKey) return false;
+      if (!capability) return true;
+      const caps = (providerEntry.resolved.capabilities || {}) as Partial<AICapabilities>;
+      return caps[capability] === true;
+    }) || matchingRoutes[0];
+
+  if (!route.primaryProviderId) {
+    throw new Error(`Routing for "${routeKey}" has no primary provider.`);
   }
 
   const provider = await getResolvedProvider(ownerUserId, route.primaryProviderId);
   if (!provider) throw new Error("Primary provider not found");
 
-  const fallbacks = await Promise.all(
-    (route.fallbackProviderIds || []).map((id) => getResolvedProvider(ownerUserId, id))
-  );
+  // Keep explicit fallback order, but drop providers that cannot serve this route.
+  const resolvedFallbacks = (route.fallbackProviderIds || [])
+    .map((id) => providerById.get(id))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .filter((entry) => {
+      if (!entry.enabled || !entry.resolved.apiKey) return false;
+      if (!capability) return true;
+      const caps = (entry.resolved.capabilities || {}) as Partial<AICapabilities>;
+      return caps[capability] === true;
+    })
+    .map((entry) => entry.resolved);
+
+  // Auto-discover fallback providers by capability when no usable explicit fallbacks are available.
+  if (resolvedFallbacks.length === 0 && capability) {
+    const autoFallbacks = allProviders
+      .filter((entry) => {
+        if (entry.id === provider.id) return false;
+        if (!entry.enabled || !entry.resolved.apiKey) return false;
+        const caps = (entry.resolved.capabilities || {}) as Partial<AICapabilities>;
+        return caps[capability] === true;
+      })
+      .map((entry) => entry.resolved);
+
+    if (autoFallbacks.length > 0) {
+      console.info(
+        `[AI:${routeKey}] No usable configured fallbacks — auto-discovered ${autoFallbacks.length} provider(s) with "${capability}" capability:`,
+        autoFallbacks.map((p) => p.displayName).join(", ")
+      );
+      return {
+        provider: {
+          ...provider,
+          defaultModel: provider.defaultModel || route.preferredModel || provider.defaultModel,
+        },
+        fallbacks: autoFallbacks,
+      };
+    }
+  }
 
   return {
     provider: {
       ...provider,
       defaultModel: provider.defaultModel || route.preferredModel || provider.defaultModel,
     },
-    fallbacks: fallbacks.filter(Boolean) as ProviderResolvedConfig[],
+    fallbacks: resolvedFallbacks,
   };
 }
 

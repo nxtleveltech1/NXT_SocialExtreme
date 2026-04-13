@@ -22,23 +22,114 @@ function estimate(config: ProviderResolvedConfig, usage: NormalizedUsage, model?
 }
 
 const KREV_TIMEOUT_MS = 90_000; // Krev media generation can be slow
+const KREV_PROBE_TIMEOUT_MS = 8_000;
+
+/** Patterns that indicate endpoint misconfiguration rather than a transient failure */
+const ENDPOINT_MISCONFIGURATION_PATTERNS = [
+  "DEPLOYMENT_NOT_FOUND",
+  "NOT_FOUND",
+  "DNS_PROBE_FINISHED",
+  "ENOTFOUND",
+  "getaddrinfo",
+  "certificate",
+  "SSL",
+] as const;
+
+function isEndpointMisconfigured(text: string): boolean {
+  const upper = text.toUpperCase();
+  return ENDPOINT_MISCONFIGURATION_PATTERNS.some((p) => upper.includes(p.toUpperCase()));
+}
+
+async function probeKrevEndpoint(endpointUrl: string, apiKey: string): Promise<{ ok: boolean; message?: string; warning?: boolean }> {
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl, {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+      },
+      signal: AbortSignal.timeout(KREV_PROBE_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (isEndpointMisconfigured(msg)) {
+      return {
+        ok: false,
+        message: `Endpoint "${endpointUrl}" is unreachable or misconfigured (${msg}).`,
+      };
+    }
+    return {
+      ok: false,
+      message: `Could not reach endpoint "${endpointUrl}" (${msg}).`,
+    };
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return {
+      ok: false,
+      message: `Krev API key was rejected for endpoint "${endpointUrl}" (status ${response.status}).`,
+    };
+  }
+
+  if (response.status === 404) {
+    let body = "";
+    try { body = await response.text(); } catch { /* ignore */ }
+    return {
+      ok: false,
+      message: `Endpoint "${endpointUrl}" returned 404 (deployment not found). ${body.slice(0, 180)}`,
+    };
+  }
+
+  // 2xx is healthy. 4xx/5xx other than auth/404 still prove the deployment exists.
+  if (!response.ok) {
+    return {
+      ok: true,
+      warning: true,
+      message: `Endpoint "${endpointUrl}" exists but returned status ${response.status}.`,
+    };
+  }
+
+  return { ok: true };
+}
 
 async function krevRequest(config: ProviderResolvedConfig, endpointUrl: string, body: Record<string, unknown>) {
   if (!config.apiKey) throw new Error(`No API key configured for ${config.displayName}`);
 
-  const response = await fetch(endpointUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(KREV_TIMEOUT_MS),
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(KREV_TIMEOUT_MS),
+    });
+  } catch (fetchError) {
+    const msg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+    if (isEndpointMisconfigured(msg)) {
+      throw new Error(
+        `Krev endpoint unreachable: "${endpointUrl}" — the URL appears to be misconfigured. ` +
+        `Update the Krev base URL or custom endpoint in Settings → AI Providers. (${msg})`
+      );
+    }
+    throw fetchError;
+  }
 
   if (!response.ok) {
     let errorBody = "";
     try { errorBody = await response.text(); } catch { /* ignore */ }
+
+    // Detect endpoint misconfiguration vs. transient/auth errors
+    if (isEndpointMisconfigured(errorBody) || response.status === 404) {
+      throw new Error(
+        `Krev endpoint not found (${response.status}): "${endpointUrl}" — ` +
+        `the deployment or URL no longer exists. Update the Krev base URL or custom endpoints in Settings → AI Providers. ` +
+        `${errorBody.slice(0, 200)}`
+      );
+    }
+
     const detail = errorBody ? ` — ${errorBody.slice(0, 300)}` : "";
     throw new Error(`Krev request failed with status ${response.status}${detail}`);
   }
@@ -53,29 +144,36 @@ export const krevAdapter: AIProviderAdapter = {
     if (!config.apiKey) {
       return { ok: false, message: "No API key configured for Krev AI." };
     }
+    const imageEndpoint = krevUrl(config, "imageEndpoint", "/v1/images");
+    const textEndpoint = krevUrl(config, "textEndpoint", "/v1/text");
+    const videoEndpoint = krevUrl(config, "videoEndpoint", "/v1/videos");
 
-    // Try the health endpoint first — treat 404 as "endpoint absent, not auth failure"
-    try {
-      const healthUrl = `${config.baseUrl || "https://api.krev.ai"}/health`;
-      const response = await fetch(healthUrl, {
-        signal: AbortSignal.timeout(8000),
-        headers: { authorization: `Bearer ${config.apiKey}` },
-      });
-      if (response.ok) return { ok: true, message: "Connected to Krev AI." };
-      if (response.status === 401 || response.status === 403) {
-        return { ok: false, message: "Krev AI rejected the API key (unauthorized)." };
-      }
-      // 404 / other → endpoint not found, fall through
-    } catch {
-      // Network failure — fall through to key-format check
+    // Image endpoint is mandatory for current studio.media.image usage.
+    const imageProbe = await probeKrevEndpoint(imageEndpoint, config.apiKey);
+    if (!imageProbe.ok) {
+      return {
+        ok: false,
+        message: `Krev image endpoint validation failed: ${imageProbe.message}`,
+      };
     }
 
-    // If the key looks valid (sk_live_ or sk_test_), accept it even without a reachable endpoint
-    if (/^sk_(live|test)_/.test(config.apiKey)) {
-      return { ok: true, message: "API key saved. Live endpoint validation skipped (use a real request to confirm)." };
+    const warnings: string[] = [];
+    const textProbe = await probeKrevEndpoint(textEndpoint, config.apiKey);
+    if (!textProbe.ok) warnings.push(`Text endpoint issue: ${textProbe.message}`);
+    else if (textProbe.warning && textProbe.message) warnings.push(textProbe.message);
+
+    const videoProbe = await probeKrevEndpoint(videoEndpoint, config.apiKey);
+    if (!videoProbe.ok) warnings.push(`Video endpoint issue: ${videoProbe.message}`);
+    else if (videoProbe.warning && videoProbe.message) warnings.push(videoProbe.message);
+
+    if (warnings.length > 0) {
+      return {
+        ok: true,
+        message: `Krev image endpoint is valid. ${warnings.join(" ")}`,
+      };
     }
 
-    return { ok: false, message: "Could not verify Krev AI key — check the base URL and key format." };
+    return { ok: true, message: "Connected to Krev AI. Required endpoints are reachable." };
   },
   async listModels() {
     return BUILT_IN_AI_PROVIDERS.find((provider) => provider.slug === "krev")?.models.map((model) => model.modelId) || ["creative-agent"];

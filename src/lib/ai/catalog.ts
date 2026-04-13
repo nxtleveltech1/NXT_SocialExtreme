@@ -154,6 +154,15 @@ export const DEFAULT_ROUTE_PROVIDER_SLUGS: Record<AIRouteKey, BuiltInProviderCat
   "agents.reply": "openrouter",
 };
 
+/** Recommended fallback provider slugs per route (used when backfilling empty fallback lists). */
+export const DEFAULT_ROUTE_FALLBACK_SLUGS: Partial<Record<AIRouteKey, BuiltInProviderCatalogEntry["slug"][]>> = {
+  "studio.media.image": ["openai"],
+  "studio.media.video": [],
+  "studio.copy": ["openai", "gemini"],
+  "agents.content": ["openai", "gemini"],
+  "agents.reply": ["openai", "gemini"],
+};
+
 export const DEFAULT_PROMPT_TEMPLATES = [
   {
     slug: "studio-social-caption",

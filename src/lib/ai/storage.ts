@@ -13,7 +13,7 @@ import {
   aiRoutingProfiles,
   aiUsageEvents,
 } from "@/db/schema";
-import { BUILT_IN_AI_PROVIDERS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_ROUTE_PROVIDER_SLUGS } from "@/lib/ai/catalog";
+import { BUILT_IN_AI_PROVIDERS, DEFAULT_PROMPT_TEMPLATES, DEFAULT_ROUTE_FALLBACK_SLUGS, DEFAULT_ROUTE_PROVIDER_SLUGS } from "@/lib/ai/catalog";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import type { AIRouteKey, BudgetCheckResult, NormalizedUsage, ProviderResolvedConfig, ProviderSecretResolution, ProviderSlug } from "@/lib/ai/types";
@@ -123,7 +123,27 @@ export async function ensureAIFoundation(ownerUserId: string) {
   const routeSet = new Set(routes.map((route) => route.routeKey));
 
   for (const [routeKey, slug] of Object.entries(DEFAULT_ROUTE_PROVIDER_SLUGS) as [AIRouteKey, ProviderSlug][]) {
-    if (routeSet.has(routeKey)) continue;
+    const fallbackSlugs = DEFAULT_ROUTE_FALLBACK_SLUGS[routeKey] || [];
+    const fallbackIds = fallbackSlugs
+      .map((fs) => providerBySlug.get(fs)?.id)
+      .filter((id): id is number => id !== undefined);
+
+    if (routeSet.has(routeKey)) {
+      // Backfill recommended fallback providers on existing routes.
+      const existingRoutes = routes.filter((r) => r.routeKey === routeKey);
+      for (const existingRoute of existingRoutes) {
+        const existingFallbackIds = ((existingRoute.fallbackProviderIds as number[] | null) || []);
+        const mergedFallbackIds = Array.from(new Set([...existingFallbackIds, ...fallbackIds]));
+        if (mergedFallbackIds.length !== existingFallbackIds.length) {
+          await db
+            .update(aiRoutingProfiles)
+            .set({ fallbackProviderIds: mergedFallbackIds, updatedAt: new Date() })
+            .where(eq(aiRoutingProfiles.id, existingRoute.id));
+        }
+      }
+      continue;
+    }
+
     const provider = providerBySlug.get(slug);
     if (!provider) continue;
     await db.insert(aiRoutingProfiles).values({
@@ -131,7 +151,7 @@ export async function ensureAIFoundation(ownerUserId: string) {
       routeKey,
       primaryProviderId: provider.id,
       preferredModel: provider.defaultModel,
-      fallbackProviderIds: [],
+      fallbackProviderIds: fallbackIds,
       settings: {},
     });
   }
@@ -245,8 +265,36 @@ export async function listProvidersWithSecrets(ownerUserId: string) {
 }
 
 export async function getResolvedProvider(ownerUserId: string, providerId: number) {
-  const providers = await listProvidersWithSecrets(ownerUserId);
-  return providers.find((provider) => provider.id === providerId)?.resolved || null;
+  const rows = await db
+    .select({
+      provider: aiProviders,
+      credential: aiProviderCredentials,
+    })
+    .from(aiProviders)
+    .leftJoin(aiProviderCredentials, eq(aiProviderCredentials.providerId, aiProviders.id))
+    .where(and(eq(aiProviders.ownerUserId, ownerUserId), eq(aiProviders.id, providerId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const { provider, credential } = row;
+  const envSecret = envSecretForProvider(provider.slug as ProviderSlug);
+  const secret = credential?.secretEnc ? decryptSecret(credential.secretEnc) : undefined;
+  const secretSource = secret ? "credential" : envSecret.source;
+
+  return {
+    id: provider.id,
+    slug: provider.slug as ProviderSlug,
+    displayName: provider.displayName,
+    adapter: provider.adapter,
+    baseUrl: provider.baseUrl || envSecret.baseUrl || null,
+    defaultModel: provider.defaultModel || envSecret.defaultModel || null,
+    settings: (provider.settings as Record<string, unknown> | null) || null,
+    capabilities: (provider.capabilities as Record<string, unknown> | null) || null,
+    apiKey: secret || envSecret.apiKey,
+    secretSource,
+  };
 }
 
 export async function upsertProviderCredential(ownerUserId: string, providerId: number, apiKey: string, label?: string) {
